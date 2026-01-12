@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Conecta UFOP API",
-    "description": "",
+    "description": "Sistema de caronas para alunas da UFOP",
     "version": "1.0.0"
   },
   "servers": [
