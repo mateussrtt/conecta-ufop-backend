@@ -15,6 +15,10 @@
     {
       "name": "Migrações",
       "description": "Endpoints para execução de migrações do banco de dados"
+    },
+    {
+      "name": "Usuários",
+      "description": "Endpoints para gerenciamento de usuários"
     }
   ],
   "paths": {
@@ -36,6 +40,96 @@
           }
         }
       }
+    },
+    "/users": {
+      "post": {
+        "tags": ["Usuários"],
+        "summary": "Criar novo usuário",
+        "description": "Cria um novo usuário no sistema. O email deve ser único. Não requer autenticação.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              },
+              "example": {
+                "nome": "Maria Silva",
+                "email": "maria.silva@aluno.ufop.edu.br",
+                "curso_ocupacao": "Engenharia de Computação",
+                "dtAniversario": "2000-05-15T00:00:00.000Z"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuário criado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateUserResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email já cadastrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "message": "Email já cadastrado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "nomeObrigatorio": {
+                    "value": {
+                      "message": "Nome é obrigatório"
+                    }
+                  },
+                  "emailObrigatorio": {
+                    "value": {
+                      "message": "Email é obrigatório"
+                    }
+                  },
+                  "emailInvalido": {
+                    "value": {
+                      "message": "Email deve ser um email válido"
+                    }
+                  },
+                  "cursoObrigatorio": {
+                    "value": {
+                      "message": "Curso/ocupação é obrigatório"
+                    }
+                  },
+                  "dataObrigatoria": {
+                    "value": {
+                      "message": "Data de aniversário é obrigatória"
+                    }
+                  },
+                  "dataInvalida": {
+                    "value": {
+                      "message": "Data de aniversário deve ser uma data válida"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -46,6 +140,57 @@
           "message": {
             "type": "string",
             "example": "Migrations completed!"
+          }
+        }
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "required": ["nome", "email", "curso_ocupacao", "dtAniversario"],
+        "properties": {
+          "nome": {
+            "type": "string",
+            "description": "Nome completo do usuário",
+            "example": "Maria Silva"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email do usuário (deve ser único)",
+            "example": "maria.silva@aluno.ufop.edu.br"
+          },
+          "curso_ocupacao": {
+            "type": "string",
+            "description": "Curso ou ocupação do usuário",
+            "example": "Engenharia de Computação"
+          },
+          "dtAniversario": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data de aniversário do usuário (formato ISO 8601)",
+            "example": "2000-05-15T00:00:00.000Z"
+          }
+        }
+      },
+      "CreateUserResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Usuário criado com sucesso"
+          },
+          "id": {
+            "type": "string",
+            "description": "ID do documento criado no Firestore",
+            "example": "abc123xyz456"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Mensagem de erro"
           }
         }
       }
