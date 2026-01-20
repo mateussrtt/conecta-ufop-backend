@@ -253,5 +253,6 @@ A documentação Swagger está disponível em `/docs` quando o servidor está ro
 1. Crie uma branch para sua feature
 2. Escreva testes para suas mudanças
 3. Certifique-se de que todos os testes passam
+4. Adicione seu endpoint no swagger
 4. Faça um pull request
 
