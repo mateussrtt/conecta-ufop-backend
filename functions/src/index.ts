@@ -10,6 +10,8 @@ import { initializeApp, getApps } from "firebase/app";
 
 import { onError } from "./middlewares/error";
 import { migrationsUp } from "./controllers/migrations-controller";
+import { createUser } from "./controllers/users";
+import { catchAsyncErrors } from "./middlewares/catch-async-errors";
 import { setGlobalOptions } from "firebase-functions/v2/options";
 
 admin.initializeApp();
@@ -43,9 +45,16 @@ setGlobalOptions({ maxInstances: 10, region: "southamerica-east1" });
 const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json());
-app.use("/docs", serve, setup(swagger));
+app.use("/docs/", serve, setup(swagger));
 
 app.post("/migrations-up", migrationsUp);
 
+// Declarem seus endpoints abaixo
+
+app.post("/users", catchAsyncErrors(createUser));
+
+
+
 app.use(onError);
 export const api = onRequest(app);
+export { app };
