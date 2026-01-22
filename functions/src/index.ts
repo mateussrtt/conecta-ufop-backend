@@ -13,9 +13,13 @@ import { migrationsUp } from "./controllers/migrations-controller";
 import { createUser } from "./controllers/users";
 import { catchAsyncErrors } from "./middlewares/catch-async-errors";
 import { setGlobalOptions } from "firebase-functions/v2/options";
+import { createCarona } from "./controllers/carona";
+import { authenticate } from "./middlewares/authenticate";
 
+// Inicializa Firebase Admin
 admin.initializeApp();
 
+// Configuração para testes locais
 if (process.env.NODE_ENV === "test") {
   process.env.FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099";
 
@@ -34,27 +38,33 @@ if (process.env.NODE_ENV === "test") {
     const auth = getAuth();
     connectAuthEmulator(auth, "http://127.0.0.1:9099");
   }
+
   admin.firestore().settings({
     host: "localhost:8080",
     ssl: false,
   });
 }
 
+// Configurações globais do Firebase Functions
 setGlobalOptions({ maxInstances: 10, region: "southamerica-east1" });
 
 const app = express();
+
+// Middlewares globais
 app.use(cors({ origin: true }));
 app.use(express.json());
 app.use("/docs/", serve, setup(swagger));
 
+// Rotas
 app.post("/migrations-up", migrationsUp);
-
-// Declarem seus endpoints abaixo
-
 app.post("/users", catchAsyncErrors(createUser));
 
+// ✅ Rota de carona protegida por autenticação
+app.post("/carona", authenticate, catchAsyncErrors(createCarona));
 
-
+// Middleware de tratamento de erros
 app.use(onError);
+
+// Exporta a função do Firebase Functions
 export const api = onRequest(app);
 export { app };

@@ -1,12 +1,12 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import { ValidationError } from "yup";
 import * as logger from "firebase-functions/logger";
 
 export const onError = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   err: any,
   req: Request,
   res: Response,
+  next: NextFunction
 ) => {
   logger.error(err);
 
@@ -14,5 +14,7 @@ export const onError = (
     return res.status(422).send({ message: err.message });
   }
 
-  return res.status(500).send({ error: err });
+  return res.status(500).send({
+    message: "Erro interno do servidor",
+  });
 };

@@ -1,46 +1,26 @@
-import { NextFunction, Request, RequestHandler, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import * as admin from "firebase-admin";
 
-export interface User {
-  id: string;
-  displayName: string;
-  email: string;
-  photoUrl: string;
-}
+export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Pega o header Authorization
+    const authHeader = req.headers.authorization;
 
-export const authenticate = (): RequestHandler =>
-  async (req: Request, res: Response, next: NextFunction) => {
-    if (
-      !req.headers.authorization ||
-      !req.headers.authorization.startsWith("Bearer ")
-    ) {
-      console.log("Request to protected route without authorization header");
-      res.status(403).send({
-        message: "Unauthorized",
-      });
-      return;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Token não fornecido" });
     }
 
-    const idToken = req.headers.authorization.split("Bearer ")[1];
+    const idToken = authHeader.split("Bearer ")[1];
 
-    try {
-      const decodedIdToken = await admin.auth().verifyIdToken(idToken);
-      
-      req.user = {
-        id: decodedIdToken.uid,
-        displayName: decodedIdToken.name || "",
-        email: decodedIdToken.email || "",
-        photoUrl: decodedIdToken.picture || "",
-      };
+    // Verifica o token no Firebase Auth
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
 
-      next();
-      return;
-    } catch (e) {
-      console.log(
-        "Error on authenticate while verifying Firebase ID token:",
-        e,
-      );
-      res.status(403).send("Unauthorized");
-      return;
-    }
-  };
+    // Adiciona o UID do usuário na requisição
+    (req as any).user = { uid: decodedToken.uid };
+
+    next();
+  } catch (err: any) {
+    console.error(err);
+    return res.status(401).json({ message: "Não autorizado", error: err.message });
+  }
+};
