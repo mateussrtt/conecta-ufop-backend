@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
-import { postUserSchema } from "../schemas/users";
+import { postUserSchema, uploadProfileImageSchema, updateUserSchema } from "../schemas/users";
 
 export const createUser = async (
     req: Request,
@@ -55,5 +55,77 @@ export const createUser = async (
     res.status(201).send({
         message: "Usuário criado com sucesso",
         id: docRef.id,
+    });
+};
+
+export const uploadUserProfile = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    const { id: uid } = req.user!;
+    const validatedData = await uploadProfileImageSchema.validate(req.body, {abortEarly: false,});
+    const { fotoBase64, descricao } = validatedData;
+    const matches = fotoBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+
+    if(!matches || matches.length !== 3){
+        res.status(400).send({message: "Formato de imagem inválido. Use Base64 com cabeçalho data URI."});
+        return;
+    }
+
+    const mimeType = matches[1];
+    const extension = mimeType.split('/')[1];
+    const buffer = Buffer.from(matches[2], 'base64');
+
+    const bucket = admin.storage().bucket();
+    const filePath = `uploads/users/${uid}/foto-de-perfil.${extension}`;
+    const file = bucket.file(filePath);
+
+    try {
+        await file.save(buffer, {
+            metadata: { contentType: mimeType},
+            public: true,
+        });
+
+        const fotoUrl = 'https://storage.googleapis.com/${bucket.name}/$filePath}';
+
+        await admin.firestore().collection("users").doc(uid).update({
+            fotoUrl: fotoUrl,
+            descricao: descricao,
+            atualizadoEm: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        res.status(200).send({
+            message: "Perfil atualizado com sucesso",
+            fotoUrl: fotoUrl
+        });
+    } catch (error) {
+        logger.error("Erro no upload de imagem", error);
+        res.status(500).send({ message: "Erro interno ao salvar imagem" });
+    }
+};
+
+export const updateUserData = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    const { id: uid } = req.user!;
+
+    const validatedData = await updateUserSchema.validate(req.body, {
+        abortEarly: false,
+        stripUnknown: true,
+    });
+
+    const updateData = {
+        nome: validatedData.nome,
+        curso_ocupacao: validatedData.curso_ocupacao,
+        dtAniversario: admin.firestore.Timestamp.fromDate(validatedData.dtAniversario),
+        descricao: validatedData.descricao,
+        atualizadoEm: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    await admin.firestore().collection("users").doc(uid).update(updateData);
+
+    res.status(200).send({
+        message: "Dados atualizados com sucesso"
     });
 };

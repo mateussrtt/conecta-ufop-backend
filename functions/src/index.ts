@@ -10,8 +10,9 @@ import { initializeApp, getApps } from "firebase/app";
 
 import { onError } from "./middlewares/error";
 import { migrationsUp } from "./controllers/migrations-controller";
-import { createUser } from "./controllers/users";
+import { createUser, uploadUserProfile, updateUserData } from "./controllers/users";
 import { catchAsyncErrors } from "./middlewares/catch-async-errors";
+import { authenticate } from "./middlewares/authenticate";
 import { setGlobalOptions } from "firebase-functions/v2/options";
 
 admin.initializeApp();
@@ -44,7 +45,7 @@ setGlobalOptions({ maxInstances: 10, region: "southamerica-east1" });
 
 const app = express();
 app.use(cors({ origin: true }));
-app.use(express.json());
+app.use(express.json({ limit: "10mb"}));
 app.use("/docs/", serve, setup(swagger));
 
 app.post("/migrations-up", migrationsUp);
@@ -53,7 +54,8 @@ app.post("/migrations-up", migrationsUp);
 
 app.post("/users", catchAsyncErrors(createUser));
 
-
+app.post("/users/perfil", authenticate, catchAsyncErrors(uploadUserProfile));
+app.put("/users", authenticate, catchAsyncErrors(updateUserData));
 
 app.use(onError);
 export const api = onRequest(app);
