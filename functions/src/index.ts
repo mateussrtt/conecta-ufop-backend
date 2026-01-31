@@ -14,8 +14,7 @@ import { createUser, uploadUserProfile, updateUserData } from "./controllers/use
 import { catchAsyncErrors } from "./middlewares/catch-async-errors";
 import { authenticate } from "./middlewares/authenticate";
 import { setGlobalOptions } from "firebase-functions/v2/options";
-import { createCarona } from "./controllers/carona";
-import { authenticate } from "./middlewares/authenticate";
+import { createCarona, solicitarCarona } from "./controllers/carona";
 
 // Inicializa Firebase Admin
 admin.initializeApp();
@@ -63,6 +62,8 @@ app.post("/users", catchAsyncErrors(createUser));
 app.post("/carona", authenticate, catchAsyncErrors(createCarona));
 app.post("/users/perfil", authenticate, catchAsyncErrors(uploadUserProfile));
 app.put("/users", authenticate, catchAsyncErrors(updateUserData));
+
+app.post("/carona/solicitar/:caronaID",authenticate, solicitarCarona);
 
 app.use(onError);
 

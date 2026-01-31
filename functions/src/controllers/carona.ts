@@ -66,3 +66,51 @@ export const createCarona = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const solicitarCarona = async (req: Request, res: Response) => {
+  try{
+    const { caronaID } = req.params;
+
+    const passageiroID = (req as any).user.uid || (req as any).user.uid;
+
+    const caronaRef = admin.firestore().collection("caronas").doc(caronaID);
+    const caronaDoc = await caronaRef.get();
+
+    if (!caronaDoc.exists){
+      return res.status(404).json({ message: "Carona não encontrada"});
+    }
+
+    const data = caronaDoc.data();
+
+    if ((data?.vagas || 0) <= 0) {
+      return res.status(400).json({ message: "Esta carona não tem vagas disponíveis"})
+    }
+
+    const solicitacoes = data?.solicitacoes || [];
+    const passageiros = data?.passageiros || [];
+    const motoristaId = data?.motoristaId;
+
+    if (motoristaId === passageiroID) {
+      return res.status(400).json({ message: "O motorista não pode solicitar a própria carona"});
+    }
+
+    if (solicitacoes.includes(passageiroID)) {
+      return res.status(409).json({ message: "Você já enviou uma solicitação para esta carona"});
+    }
+
+    if (passageiros.includes(passageiroID)) {
+      return res.status(200).json({ message: "VocÊ já é um passageiro desta carona"});
+    }
+    
+    await caronaRef.update({
+solicitacoes: admin.firestore.FieldValue.arrayUnion(passageiroID)
+    });
+
+    return res.status(200).json({ message: "Solicitação de carona enviada com sucesso!"});
+  } catch (error: any) {
+    return res.status(500).json({
+      message: "Erro ao solicitar carona",
+      error: error.message,
+    });
+  }
+};
