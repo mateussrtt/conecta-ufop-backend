@@ -16,6 +16,8 @@ import { authenticate } from "./middlewares/authenticate";
 import { setGlobalOptions } from "firebase-functions/v2/options";
 import { createCarona } from "./controllers/carona";
 import { criarAvaliacao } from "./controllers/avaliacao-controller";
+import { validateSchema } from "./middlewares/validate-schema";
+import { criarAvaliacaoSchema } from "./schemas/avaliacaoSchema";
 
 // Inicializa Firebase Admin
 admin.initializeApp();
@@ -60,6 +62,7 @@ app.use("/docs/", serve, setup(swagger));
 app.post("/migrations-up", migrationsUp);
 app.post("/users", catchAsyncErrors(createUser));
 app.post("/avaliacao", authenticate, criarAvaliacao);
+app.post("/avaliacao", authenticate, validateSchema(criarAvaliacaoSchema), criarAvaliacao);
 
 app.post("/carona", authenticate, catchAsyncErrors(createCarona));
 app.post("/users/perfil", authenticate, catchAsyncErrors(uploadUserProfile));
