@@ -82,10 +82,14 @@ export const solicitarCarona = async (req: Request, res: Response) => {
 
     const data = caronaDoc.data();
 
-    if ((data?.vagas || 0) <= 0) {
-      return res.status(400).json({ message: "Esta carona não tem vagas disponíveis"})
-    }
+    const capacidadeTotal = data?.vagas || 0;
+    const passageirosConfirmados = data?.passageiros?.lenght || 0;
+    const vagaDisponiveis = capacidadeTotal - passageirosConfirmados;
 
+    if (vagasDisponiveis <= 0) {
+      return res.status(400).json({ message: "Esta carona está lotada" });
+    }
+    
     const solicitacoes = data?.solicitacoes || [];
     const passageiros = data?.passageiros || [];
     const motoristaId = data?.motoristaId;
