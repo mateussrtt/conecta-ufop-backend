@@ -14,7 +14,7 @@ import { createUser, getAuthenticatedUser, uploadUserProfile, updateUserData } f
 import { catchAsyncErrors } from "./middlewares/catch-async-errors";
 import { authenticate } from "./middlewares/authenticate";
 import { setGlobalOptions } from "firebase-functions/v2/options";
-import { createCarona, solicitarCarona } from "./controllers/carona";
+import { createCarona, solicitarCarona, getAllCaronas } from "./controllers/carona";
 
 admin.initializeApp();
 
@@ -52,6 +52,8 @@ app.use("/docs/", serve, setup(swagger));
 
 
 app.post("/migrations-up", migrationsUp);
+
+app.get("/caronas", getAllCaronas);
 
 app.get("/users/me", authenticate, catchAsyncErrors(getAuthenticatedUser));
 app.post("/users", catchAsyncErrors(createUser));

@@ -122,3 +122,63 @@ export const solicitarCarona = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getAllCaronas = async (req: Request, res: Response) => {
+  try {
+    const snapshot = await admin.firestore().collection("caronas").where("status", "==", "ABERTA").get();
+
+    if (snapshot.empty) {
+      return res.status(200).json([]);
+    }
+
+    const caronasPromises = snapshot.docs.map(async (doc) => {
+      const data = doc.data();
+
+      const qtdSolicitacoes = data.solicitacoes ? data.solicitacoes.length : 0;
+      const qtdPassageiros = data.passageiros ? data.passageiros.length : 0;
+      const vagasDisponiveis = (data.vagas || 0) - (qtdSolicitacoes + qtdPassageiros);
+
+      if (vagasDisponiveis <= 0) {
+        return null;
+      }
+
+      let motoristaData = { nome: "Desconhecido", notaMedia: 0, fotoUrl: ""};
+      if (data.motoristaId) {
+        const userDoc = await admin.firestore().collection("users").doc(data.motoristaId).get();
+        if (userDoc.exists) {
+          const uData = userDoc.data();
+          motoristaData = {
+            nome: uData?.nome || "Usuário",
+            notaMedia: uData?.notaMedia || 5.0,
+            fotoUrl: uData?.fotoUrl || null
+          };
+
+        }
+      } 
+      return {
+        id: doc.id,
+        criadoEm: data.criadoEm?.toDate(),
+        motorista: motoristaData,
+        veiculo: data.veiculo,
+        valor: data.valor,
+        vagasDisponiveis: vagasDisponiveis,
+        origem: data.origem,
+        destino: data.destino,
+        dtPartida: data.dtPartida?.toDate(),
+        dtChegada: data.dtChegada?.toDate()
+      };
+    });
+
+    const caronasProcessadas = await Promise.all(caronasPromises);
+
+    const caronasFiltradas = caronasProcessadas.filter(c => c !== null);
+
+    return res.status(200).json(caronasFiltradas);
+
+  } catch (error: any) {
+    return res.status(500).json({
+      message: "Erro ao buscar caronas disponíveis",
+      error: error.message
+    });
+  }
+}
