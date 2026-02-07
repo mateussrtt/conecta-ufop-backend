@@ -10,7 +10,7 @@ import { initializeApp, getApps } from "firebase/app";
 
 import { onError } from "./middlewares/error";
 import { migrationsUp } from "./controllers/migrations-controller";
-import { createUser, uploadUserProfile, updateUserData } from "./controllers/users";
+import { createUser, getAuthenticatedUser, uploadUserProfile, updateUserData } from "./controllers/users";
 import { catchAsyncErrors } from "./middlewares/catch-async-errors";
 import { authenticate } from "./middlewares/authenticate";
 import { setGlobalOptions } from "firebase-functions/v2/options";
@@ -53,6 +53,7 @@ app.use("/docs/", serve, setup(swagger));
 
 app.post("/migrations-up", migrationsUp);
 
+app.get("/users/me", authenticate, catchAsyncErrors(getAuthenticatedUser));
 app.post("/users", catchAsyncErrors(createUser));
 app.post("/users/perfil", authenticate, catchAsyncErrors(uploadUserProfile));
 app.put("/users", authenticate, catchAsyncErrors(updateUserData));

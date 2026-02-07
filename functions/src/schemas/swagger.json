@@ -41,6 +41,49 @@
         }
       }
     },
+    "/users/me": {
+      "get": {
+        "tags": ["Usuários"],
+        "summary": "Dados do usuário autenticado",
+        "description": "Retorna os dados do usuário logado. Requer token no header Authorization: Bearer <token>.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Dados do usuário",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthenticatedUserResponse" },
+                "example": {
+                  "fotoUrl": "https://storage.googleapis.com/...",
+                  "nome": "Maria Silva",
+                  "descricao": "Estudante de Engenharia",
+                  "email": "maria@aluno.ufop.edu.br",
+                  "genero": "F"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token não fornecido ou inválido",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Não autorizado" }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Usuário não encontrado" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users": {
       "post": {
         "tags": ["Usuários"],
@@ -133,7 +176,25 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Firebase ID Token",
+        "description": "Token JWT do Firebase Auth"
+      }
+    },
     "schemas": {
+      "AuthenticatedUserResponse": {
+        "type": "object",
+        "properties": {
+          "fotoUrl": { "type": "string", "nullable": true, "description": "URL da foto de perfil" },
+          "nome": { "type": "string", "nullable": true, "description": "Nome do usuário" },
+          "descricao": { "type": "string", "nullable": true, "description": "Descrição/bio do usuário" },
+          "email": { "type": "string", "nullable": true, "format": "email", "description": "Email do usuário" },
+          "genero": { "type": "string", "nullable": true, "description": "Gênero do usuário" }
+        }
+      },
       "MigrationResponse": {
         "type": "object",
         "properties": {
