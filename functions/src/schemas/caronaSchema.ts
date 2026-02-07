@@ -32,4 +32,16 @@ export const postCaronaSchema = yup.object().shape({
       estado: yup.string().required("O campo 'estado' é obrigatório"),
     })
     .required("O campo 'origem' é obrigatório"),
+
+    destino: yup
+    .object({
+      nomeLocal: yup.string().required("O campo 'nomeLocal' é obrigatório"),
+      cep: yup.string().required("O campo 'cep' é obrigatório"),
+      rua: yup.string().required("O campo 'rua' é obrigatório"),
+      numero: yup.number().required("O campo 'numero' é obrigatório"),
+      bairro: yup.string().required("O campo 'bairro' é obrigatório"),
+      cidade: yup.string().required("O campo 'cidade' é obrigatório"),
+      estado: yup.string().required("O campo 'estado' é obrigatório"),
+    })
+    .required("O campo 'destino' é obrigatório"),
 });

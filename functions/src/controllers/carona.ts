@@ -11,7 +11,7 @@ export const createCarona = async (req: Request, res: Response) => {
       stripUnknown: true,
     });
 
-    const { veiculo, vagas, valor, dtPartida, dtChegada, origem } =
+    const { veiculo, vagas, valor, dtPartida, dtChegada, origem, destino } =
       validatedData;
 
     // Regra de negócio: data de partida < data de chegada
@@ -39,6 +39,7 @@ export const createCarona = async (req: Request, res: Response) => {
       dtPartida: partidaTimestamp,
       dtChegada: chegadaTimestamp,
       origem,
+      destino,
       criadoEm: admin.firestore.Timestamp.now(),
       motoristaId,
       status: "ABERTA",
