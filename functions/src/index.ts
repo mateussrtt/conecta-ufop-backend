@@ -16,10 +16,8 @@ import { authenticate } from "./middlewares/authenticate";
 import { setGlobalOptions } from "firebase-functions/v2/options";
 import { createCarona, solicitarCarona } from "./controllers/carona";
 
-// Inicializa Firebase Admin
 admin.initializeApp();
 
-// Configuração para testes locais
 if (process.env.NODE_ENV === "test") {
   process.env.FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099";
 
@@ -44,29 +42,25 @@ if (process.env.NODE_ENV === "test") {
     ssl: false,
   });
 }
-
-// Configurações globais do Firebase Functions
 setGlobalOptions({ maxInstances: 10, region: "southamerica-east1" });
 
 const app = express();
 
-// Middlewares globais
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "10mb"}));
 app.use("/docs/", serve, setup(swagger));
 
-// Rotas
-app.post("/migrations-up", migrationsUp);
-app.post("/users", catchAsyncErrors(createUser));
 
-app.post("/carona", authenticate, catchAsyncErrors(createCarona));
+app.post("/migrations-up", migrationsUp);
+
+app.post("/users", catchAsyncErrors(createUser));
 app.post("/users/perfil", authenticate, catchAsyncErrors(uploadUserProfile));
 app.put("/users", authenticate, catchAsyncErrors(updateUserData));
 
+app.post("/carona", authenticate, catchAsyncErrors(createCarona));
 app.post("/carona/solicitar/:caronaID",authenticate, solicitarCarona);
 
 app.use(onError);
 
-// Exporta a função do Firebase Functions
 export const api = onRequest(app);
 export { app };

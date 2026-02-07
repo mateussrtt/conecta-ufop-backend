@@ -11,14 +11,8 @@ export const createCarona = async (req: Request, res: Response) => {
       stripUnknown: true,
     });
 
-    const {
-      veiculo,
-      vagas,
-      valor,
-      dtPartida,
-      dtChegada,
-      origem,
-    } = validatedData;
+    const { veiculo, vagas, valor, dtPartida, dtChegada, origem } =
+      validatedData;
 
     // Regra de negócio: data de partida < data de chegada
     const partida = new Date(dtPartida);
@@ -51,7 +45,8 @@ export const createCarona = async (req: Request, res: Response) => {
     };
 
     // Salva no Firestore
-    const docRef = await admin.firestore()
+    const docRef = await admin
+      .firestore()
       .collection("caronas")
       .add(caronaData);
 
@@ -68,7 +63,7 @@ export const createCarona = async (req: Request, res: Response) => {
 };
 
 export const solicitarCarona = async (req: Request, res: Response) => {
-  try{
+  try {
     const { caronaID } = req.params;
 
     const passageiroID = (req as any).user.uid || (req as any).user.uid;
@@ -76,41 +71,49 @@ export const solicitarCarona = async (req: Request, res: Response) => {
     const caronaRef = admin.firestore().collection("caronas").doc(caronaID);
     const caronaDoc = await caronaRef.get();
 
-    if (!caronaDoc.exists){
-      return res.status(404).json({ message: "Carona não encontrada"});
+    if (!caronaDoc.exists) {
+      return res.status(404).json({ message: "Carona não encontrada" });
     }
 
     const data = caronaDoc.data();
 
     const capacidadeTotal = data?.vagas || 0;
     const passageirosConfirmados = data?.passageiros?.lenght || 0;
-    const vagaDisponiveis = capacidadeTotal - passageirosConfirmados;
+    const vagasDisponiveis = capacidadeTotal - passageirosConfirmados;
 
     if (vagasDisponiveis <= 0) {
       return res.status(400).json({ message: "Esta carona está lotada" });
     }
-    
+
     const solicitacoes = data?.solicitacoes || [];
     const passageiros = data?.passageiros || [];
     const motoristaId = data?.motoristaId;
 
     if (motoristaId === passageiroID) {
-      return res.status(400).json({ message: "O motorista não pode solicitar a própria carona"});
+      return res
+        .status(400)
+        .json({ message: "O motorista não pode solicitar a própria carona" });
     }
 
     if (solicitacoes.includes(passageiroID)) {
-      return res.status(409).json({ message: "Você já enviou uma solicitação para esta carona"});
+      return res
+        .status(409)
+        .json({ message: "Você já enviou uma solicitação para esta carona" });
     }
 
     if (passageiros.includes(passageiroID)) {
-      return res.status(200).json({ message: "VocÊ já é um passageiro desta carona"});
+      return res
+        .status(200)
+        .json({ message: "VocÊ já é um passageiro desta carona" });
     }
-    
+
     await caronaRef.update({
-solicitacoes: admin.firestore.FieldValue.arrayUnion(passageiroID)
+      solicitacoes: admin.firestore.FieldValue.arrayUnion(passageiroID),
     });
 
-    return res.status(200).json({ message: "Solicitação de carona enviada com sucesso!"});
+    return res
+      .status(200)
+      .json({ message: "Solicitação de carona enviada com sucesso!" });
   } catch (error: any) {
     return res.status(500).json({
       message: "Erro ao solicitar carona",
