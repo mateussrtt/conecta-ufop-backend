@@ -14,10 +14,11 @@ import { createUser, uploadUserProfile, updateUserData } from "./controllers/use
 import { catchAsyncErrors } from "./middlewares/catch-async-errors";
 import { authenticate } from "./middlewares/authenticate";
 import { setGlobalOptions } from "firebase-functions/v2/options";
-import { createCarona } from "./controllers/carona";
-import { criarAvaliacao } from "./controllers/avaliacao-controller";
+import { createCarona, getCaronaById } from "./controllers/carona";
 import { validateSchema } from "./middlewares/validate-schema";
 import { criarAvaliacaoSchema } from "./schemas/avaliacaoSchema";
+import { criarAvaliacao, getAvaliacoes } from "./controllers/avaliacao-controller";
+
 
 // Inicializa Firebase Admin
 admin.initializeApp();
@@ -61,8 +62,10 @@ app.use("/docs/", serve, setup(swagger));
 // Rotas
 app.post("/migrations-up", migrationsUp);
 app.post("/users", catchAsyncErrors(createUser));
-app.post("/avaliacao", authenticate, criarAvaliacao);
 app.post("/avaliacao", authenticate, validateSchema(criarAvaliacaoSchema), criarAvaliacao);
+
+app.get("/avaliacao/:userId", getAvaliacoes);
+app.get("/carona/:id", getCaronaById);
 
 app.post("/carona", authenticate, catchAsyncErrors(createCarona));
 app.post("/users/perfil", authenticate, catchAsyncErrors(uploadUserProfile));
