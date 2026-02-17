@@ -21,7 +21,7 @@ export const createUser = async (
   const { nome, email, curso_ocupacao, dtAniversario } = validatedData;
 
   // Aqui, verificamos se o email já existe
-  const usersRef = admin.firestore().collection("users");
+  const usersRef = admin.firestore().collection("usuarios");
   const existingUser = await usersRef
     .where("email", "==", email)
     .limit(1)
@@ -97,7 +97,7 @@ export const uploadUserProfile = async (
 
     const fotoUrl = "https://storage.googleapis.com/${bucket.name}/$filePath}";
 
-    await admin.firestore().collection("users").doc(uid).update({
+    await admin.firestore().collection("usuarios").doc(uid).update({
       fotoUrl: fotoUrl,
       descricao: descricao,
       atualizadoEm: admin.firestore.FieldValue.serverTimestamp(),
@@ -134,7 +134,7 @@ export const updateUserData = async (
     atualizadoEm: admin.firestore.FieldValue.serverTimestamp(),
   };
 
-  await admin.firestore().collection("users").doc(uid).update(updateData);
+  await admin.firestore().collection("usuarios").doc(uid).update(updateData);
 
   res.status(200).send({
     message: "Dados atualizados com sucesso",
@@ -147,7 +147,7 @@ export const getAuthenticatedUser = async (
 ): Promise<void> => {
   const id = (req as any).user?.uid;
 
-  const userDoc = await admin.firestore().collection("users").doc(id).get();
+  const userDoc = await admin.firestore().collection("usuarios").doc(id).get();
   if (!userDoc.exists) {
     res.status(404).send({ message: "Usuário não encontrado" });
     return;
