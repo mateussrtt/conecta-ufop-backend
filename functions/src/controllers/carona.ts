@@ -182,3 +182,66 @@ export const getAllCaronas = async (req: Request, res: Response) => {
     });
   }
 }
+
+export const responderSolicitacao = async (req: Request, res: Response) => {
+  try {
+    const { caronaID, passageiroID } = req.params;
+    const { aceite } = req.body;
+    const motoristaIdLogado = (req as any).user.uid || (req as any).user.id;
+
+    if (typeof aceite !== 'boolean') {
+      return res.status(400).json({ message: "O campo 'aceite' é obrigatório e deve ser booleano."});
+    }
+
+    const caronaRef = admin.firestore().collection("caronas").doc(caronaID);
+    const caronaDoc = await caronaRef.get();
+
+    if (!caronaDoc.exists) {
+      return res.status(404).json({ message: "Carona não econtrada."});
+    }
+
+    const data = caronaDoc.data();
+
+    if (data?.motoristaId !== motoristaIdLogado){
+      return res.status(403).json({ message: "Apenas o motorista responsável pode gerenciar solicitações."});
+    }
+
+    const solicitacoes = data?.solicitacoes || [];
+    if (!solicitacoes.includes(passageiroID)){
+      return res.status(404).json({ message: "Solicitação deste passageiro não encontrada."});
+    }
+
+    if (aceite === false) {
+      await caronaRef.update({
+        solicitacoes: admin.firestore.FieldValue.arrayRemove(passageiroID)});
+        return res.status(200).json({ message: "Solciitação recusada com sucesso."});
+    
+    }
+
+    else {
+      const capacidadeTotal = data?.vagas || 0;
+      const passageirosConfirmados = data?.passageiros || [];
+      const vagasDisponiveis = capacidadeTotal - passageirosConfirmados.length;
+
+      if (vagasDisponiveis <= 0) {
+        return res.status(400).json({ message: "Não é possível aceitar: Carona lotada."});
+      }
+
+      if (passageirosConfirmados.includes(passageiroID)){
+        return res.status(409).json({ message: "Este passageiro já está confirmado na carona"});
+      }
+      
+      await caronaRef.update({
+        solicitacoes: admin.firestore.FieldValue.arrayRemove(passageiroID),
+        passageiros: admin.firestore.FieldValue.arrayUnion(passageiroID)
+      });
+
+      return res.status(200).json({ message: "SOlicitação aceita! Passageiro confirmado."});
+    }
+  } catch (error: any){
+    return res.status(500).json({
+      message: "Erro ao processar solicitação de carona",
+      error: error.message
+    });
+  }
+};
