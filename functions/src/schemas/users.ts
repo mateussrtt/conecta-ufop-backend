@@ -12,8 +12,8 @@ export const postUserSchema = object({
 });
 
 export const uploadProfileImageSchema = object({
-    fotoBase64: string().required('A string Base64 da foto é obrigatória'),
-    descricao: string().required('A descrição é obrigatória'),
+    fotoBase64: string().required("A string Base64 da foto é obrigatória"),
+    descricao: string().required("A descrição é obrigatória"),
 });
 
 export const updateUserSchema = object({

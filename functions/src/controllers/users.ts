@@ -69,7 +69,7 @@ export const uploadUserProfile = async (
     abortEarly: false,
   });
   const { fotoBase64, descricao } = validatedData;
-  const matches = fotoBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+  const matches = fotoBase64.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
 
   if (!matches || matches.length !== 3) {
     res

@@ -19,19 +19,18 @@ import {
 import { catchAsyncErrors } from "./middlewares/catch-async-errors";
 import { authenticate } from "./middlewares/authenticate";
 import { setGlobalOptions } from "firebase-functions/v2/options";
-import { getCaronaById } from "./controllers/carona";
+import {
+  getCaronaById,
+  createCarona,
+  solicitarCarona,
+  getAllCaronas,
+} from "./controllers/carona";
 import { validateSchema } from "./middlewares/validate-schema";
 import { criarAvaliacaoSchema } from "./schemas/avaliacaoSchema";
 import {
   criarAvaliacao,
   getAvaliacoes,
 } from "./controllers/avaliacao-controller";
-
-import {
-  createCarona,
-  solicitarCarona,
-  getAllCaronas,
-} from "./controllers/carona";
 
 admin.initializeApp();
 
@@ -91,5 +90,7 @@ app.post("/carona/solicitar/:caronaID", authenticate, solicitarCarona);
 
 app.use(onError);
 
-export const api = onRequest(app);
-export { app };
+export const api = onRequest(
+  { region: "southamerica-east1", maxInstances: 10 },
+  app,
+);

@@ -2,8 +2,7 @@ import { Request, Response } from "express";
 import * as admin from "firebase-admin";
 import { postCaronaSchema } from "../schemas/caronaSchema";
 
-const db = admin.firestore();
-
+ 
 
 export const createCarona = async (req: Request, res: Response) => {
   try {
@@ -50,7 +49,7 @@ export const createCarona = async (req: Request, res: Response) => {
       passageiros: [],
     };
 
-    const docRef = await db.collection("caronas").add(caronaData);
+    const docRef = await admin.firestore().collection("caronas").add(caronaData);
 
     return res.status(201).json({
       message: "Carona criada com sucesso",
@@ -69,7 +68,7 @@ export const getCaronaById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const caronaSnap = await db.collection("caronas").doc(id).get();
+    const caronaSnap = await admin.firestore().collection("caronas").doc(id).get();
 
     if (!caronaSnap.exists) {
       return res.status(404).json({ message: "Carona não encontrada" });
@@ -81,7 +80,7 @@ export const getCaronaById = async (req: Request, res: Response) => {
 
 const carona = caronaSnap.data()!;
 
-    const motoristaSnap = await db
+    const motoristaSnap = await admin.firestore()
       .collection("users")
       .doc(carona?.motoristaId)
       .get();
@@ -93,7 +92,7 @@ const carona = caronaSnap.data()!;
     const motorista = motoristaSnap.data();
 
 
-    const avaliacoesSnap = await db
+    const avaliacoesSnap = await admin.firestore()
       .collection("avaliacoes")
       .where("motoristaId", "==", carona?.motoristaId)
       .get();
@@ -109,7 +108,7 @@ const carona = caronaSnap.data()!;
     }
 
 
-    const caronasMotoristaSnap = await db
+    const caronasMotoristaSnap = await admin.firestore()
       .collection("caronas")
       .where("motoristaId", "==", carona?.motoristaId)
       .get();
@@ -130,7 +129,7 @@ const carona = caronaSnap.data()!;
 
     if (carona?.passageiros?.length > 0) {
       for (const passageiroId of carona.passageiros) {
-        const userSnap = await db.collection("users").doc(passageiroId).get();
+        const userSnap = await admin.firestore().collection("users").doc(passageiroId).get();
 
         if (userSnap.exists) {
           const user = userSnap.data();
@@ -307,7 +306,7 @@ export const responderSolicitacao = async (req: Request, res: Response) => {
     const { aceite } = req.body;
     const motoristaIdLogado = (req as any).user.uid || (req as any).user.id;
 
-    if (typeof aceite !== 'boolean') {
+    if (typeof aceite !== "boolean") {
       return res.status(400).json({ message: "O campo 'aceite' é obrigatório e deve ser booleano."});
     }
 
