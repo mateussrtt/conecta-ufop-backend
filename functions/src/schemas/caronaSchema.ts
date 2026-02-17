@@ -32,7 +32,6 @@ export const postCaronaSchema = yup.object().shape({
       estado: yup.string().required("O campo 'estado' é obrigatório"),
     })
     .required("O campo 'origem' é obrigatório"),
-
     destino: yup
     .object({
       nomeLocal: yup.string().required("O campo 'nomeLocal' é obrigatório"),

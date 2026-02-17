@@ -14,8 +14,13 @@ import { createUser, getAuthenticatedUser, uploadUserProfile, updateUserData } f
 import { catchAsyncErrors } from "./middlewares/catch-async-errors";
 import { authenticate } from "./middlewares/authenticate";
 import { setGlobalOptions } from "firebase-functions/v2/options";
-import { createCarona, solicitarCarona, getAllCaronas } from "./controllers/carona";
+ import { createCarona, getCaronaById } from "./controllers/carona";
+import { validateSchema } from "./middlewares/validate-schema";
+import { criarAvaliacaoSchema } from "./schemas/avaliacaoSchema";
+import { criarAvaliacao, getAvaliacoes } from "./controllers/avaliacao-controller";
 
+ import { createCarona, solicitarCarona, getAllCaronas } from "./controllers/carona";
+ 
 admin.initializeApp();
 
 if (process.env.NODE_ENV === "test") {
@@ -52,6 +57,12 @@ app.use("/docs/", serve, setup(swagger));
 
 
 app.post("/migrations-up", migrationsUp);
+ app.post("/users", catchAsyncErrors(createUser));
+app.post("/avaliacao", authenticate, validateSchema(criarAvaliacaoSchema), criarAvaliacao);
+
+app.get("/avaliacao/:userId", getAvaliacoes);
+app.get("/carona/:id", getCaronaById);
+ 
 
 app.get("/caronas", getAllCaronas);
 
@@ -60,9 +71,10 @@ app.post("/users", catchAsyncErrors(createUser));
 app.post("/users/perfil", authenticate, catchAsyncErrors(uploadUserProfile));
 app.put("/users", authenticate, catchAsyncErrors(updateUserData));
 
+ 
 app.post("/carona", authenticate, catchAsyncErrors(createCarona));
 app.post("/carona/solicitar/:caronaID",authenticate, solicitarCarona);
-
+ 
 app.use(onError);
 
 export const api = onRequest(app);
