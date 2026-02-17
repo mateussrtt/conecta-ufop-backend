@@ -31,3 +31,22 @@ export const authenticate = async (
     return;
   }
 };
+
+export const optionalAuthenticate = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      next();
+      return;
+    }
+    const idToken = authHeader.split("Bearer ")[1];
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    (req as any).user = { uid: decodedToken.uid };
+  } catch {
+  }
+  next();
+};

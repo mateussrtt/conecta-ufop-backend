@@ -1,7 +1,12 @@
 import * as yup from "yup";
 
 export const postCaronaSchema = yup.object().shape({
-  veiculo: yup.string().required("O campo 'veiculo' é obrigatório"),
+  veiculo: yup
+    .object({
+      modelo: yup.string().required("O campo 'modelo' é obrigatório"),
+      placa: yup.string().required("O campo 'placa' é obrigatório"),
+    })
+    .required("O campo 'veiculo' é obrigatório"),
 
   vagas: yup
     .number()

@@ -17,13 +17,14 @@ import {
   updateUserData,
 } from "./controllers/users";
 import { catchAsyncErrors } from "./middlewares/catch-async-errors";
-import { authenticate } from "./middlewares/authenticate";
+import { authenticate, optionalAuthenticate } from "./middlewares/authenticate";
 import { setGlobalOptions } from "firebase-functions/v2/options";
 import {
   getCaronaById,
   createCarona,
   solicitarCarona,
   getAllCaronas,
+  getMinhasCaronas,
 } from "./controllers/carona";
 import { validateSchema } from "./middlewares/validate-schema";
 import { criarAvaliacaoSchema } from "./schemas/avaliacaoSchema";
@@ -76,9 +77,10 @@ app.post(
 );
 
 app.get("/avaliacao/:userId", getAvaliacoes);
-app.get("/carona/:id", getCaronaById);
+app.get("/carona/:id", optionalAuthenticate, catchAsyncErrors(getCaronaById));
 
 app.get("/caronas", getAllCaronas);
+app.get("/caronas/minhasCaronas", authenticate, catchAsyncErrors(getMinhasCaronas));
 
 app.get("/users/me", authenticate, catchAsyncErrors(getAuthenticatedUser));
 app.post("/users", catchAsyncErrors(createUser));

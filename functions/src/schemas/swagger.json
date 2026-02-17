@@ -299,7 +299,7 @@
             "application/json": {
               "schema": { "$ref": "#/components/schemas/CreateCaronaRequest" },
               "example": {
-                "veiculo": "Fiat Uno",
+                "veiculo": { "modelo": "Fiat Uno", "placa": "ABC-1234" },
                 "vagas": 3,
                 "valor": 15.0,
                 "dtPartida": "2025-02-10T08:00:00.000Z",
@@ -476,6 +476,86 @@
           },
           "500": {
             "description": "Erro ao buscar carona",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/caronas/minhas": {
+      "get": {
+        "tags": ["Caronas"],
+        "summary": "Listar minhas caronas",
+        "description": "Retorna as caronas do usuário autenticado. Se for motorista: lista de caronas com solicitações pendentes e passageiros confirmados. Se for passageiro: caronas solicitadas ou confirmadas com dados do motorista. Requer autenticação.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Lista de caronas como motorista e como passageiro",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "comoMotorista": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "papel": { "type": "string", "example": "motorista" },
+                          "veiculo": { "$ref": "#/components/schemas/VeiculoCaronaResponse" },
+                          "origem": { "type": "object", "description": "Objeto completo da origem" },
+                          "destino": { "type": "object", "description": "Objeto completo do destino" },
+                          "rota": { "type": "string", "description": "Rota formatada (origem → destino)" },
+                          "dtPartida": {},
+                          "dtChegada": {},
+                          "valor": {},
+                          "vagasDisponiveis": { "type": "integer" },
+                          "status": { "type": "string", "enum": ["SOLICITADA", "CONFIRMADA"] },
+                          "solicitacoes": { "type": "array", "description": "Lista de passageiros que solicitaram vaga" },
+                          "passageiros": { "type": "array", "description": "Lista de passageiros confirmados" }
+                        }
+                      }
+                    },
+                    "comoPassageiro": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "papel": { "type": "string", "example": "passageiro" },
+                          "status": { "type": "string", "enum": ["CONFIRMADO", "SOLICITADO"] },
+                          "motorista": { "type": "object", "description": "Dados do motorista" },
+                          "veiculo": { "$ref": "#/components/schemas/VeiculoCaronaResponse" },
+                          "origem": { "type": "object", "description": "Objeto completo da origem" },
+                          "destino": { "type": "object", "description": "Objeto completo do destino" },
+                          "rota": { "type": "string", "description": "Rota formatada (origem → destino)" },
+                          "dtPartida": {},
+                          "dtChegada": {},
+                          "valor": {},
+                          "vagasDisponiveis": { "type": "integer" },
+                          "passageiros": { "type": "array", "description": "Lista de passageiros da carona" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Usuário não autenticado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro ao listar minhas caronas",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -733,6 +813,22 @@
           "message": { "type": "string", "description": "Mensagem de sucesso" }
         }
       },
+      "VeiculoCarona": {
+        "type": "object",
+        "required": ["modelo", "placa"],
+        "properties": {
+          "modelo": { "type": "string", "description": "Modelo do veículo" },
+          "placa": { "type": "string", "description": "Placa do veículo" }
+        }
+      },
+      "VeiculoCaronaResponse": {
+        "type": "object",
+        "properties": {
+          "modelo": { "type": "string", "description": "Modelo do veículo" },
+          "placa": { "type": "string", "description": "Placa do veículo" },
+          "formatado": { "type": "string", "description": "Versão concatenada (modelo - placa)" }
+        }
+      },
       "OrigemCarona": {
         "type": "object",
         "required": ["nomeLocal", "cep", "rua", "numero", "bairro", "cidade", "estado"],
@@ -750,7 +846,7 @@
         "type": "object",
         "required": ["veiculo", "vagas", "valor", "dtPartida", "dtChegada", "origem"],
         "properties": {
-          "veiculo": { "type": "string", "description": "Descrição do veículo" },
+          "veiculo": { "$ref": "#/components/schemas/VeiculoCarona" },
           "vagas": { "type": "number", "minimum": 1, "description": "Número de vagas" },
           "valor": { "type": "number", "minimum": 0, "description": "Valor por passageiro" },
           "dtPartida": { "type": "string", "format": "date-time", "description": "Data/hora de partida (ISO 8601)" },
@@ -781,7 +877,7 @@
               "perfil": { "type": "string", "description": "Perfil formatado (idade - curso/ocupação)" }
             }
           },
-          "veiculo": { "type": "string" },
+          "veiculo": { "$ref": "#/components/schemas/VeiculoCaronaResponse" },
           "valor": { "type": "number" },
           "vagasDisponiveis": { "type": "integer" },
           "origem": { "$ref": "#/components/schemas/OrigemCarona" },
@@ -818,7 +914,7 @@
               "fotoUrl": { "type": "string", "nullable": true }
             }
           },
-          "veiculo": { "type": "string" },
+          "veiculo": { "$ref": "#/components/schemas/VeiculoCaronaResponse" },
           "valor": { "type": "number" },
           "vagasDisponiveis": { "type": "integer" },
           "origem": { "$ref": "#/components/schemas/OrigemCarona" },
