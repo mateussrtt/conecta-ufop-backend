@@ -19,6 +19,10 @@
     {
       "name": "Usuários",
       "description": "Endpoints para gerenciamento de usuários"
+    },
+    {
+      "name": "Caronas",
+      "description": "Endpoints para caronas"
     }
   ],
   "paths": {
@@ -35,6 +39,112 @@
                 "schema": {
                   "$ref": "#/components/schemas/MigrationResponse"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "tags": ["Usuários"],
+        "summary": "Dados do usuário autenticado",
+        "description": "Retorna os dados do usuário logado. Requer token no header Authorization: Bearer <token>.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Dados do usuário",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthenticatedUserResponse" },
+                "example": {
+                  "fotoUrl": "https://storage.googleapis.com/...",
+                  "nome": "Maria Silva",
+                  "descricao": "Estudante de Engenharia",
+                  "email": "maria@aluno.ufop.edu.br",
+                  "genero": "F"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token não fornecido ou inválido",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Não autorizado" }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Usuário não encontrado" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/perfil": {
+      "post": {
+        "tags": ["Usuários"],
+        "summary": "Upload de foto e descrição do perfil",
+        "description": "Envia foto em Base64 (data URI) e descrição. Requer autenticação.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UploadProfileRequest" },
+              "example": {
+                "fotoBase64": "data:image/jpeg;base64,/9j/4AAQ...",
+                "descricao": "Estudante de Engenharia"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Perfil atualizado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UploadProfileResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Formato de imagem inválido",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Formato de imagem inválido. Use Base64 com cabeçalho data URI." }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno ao salvar imagem",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
               }
             }
           }
@@ -129,11 +239,230 @@
             }
           }
         }
+      },
+      "put": {
+        "tags": ["Usuários"],
+        "summary": "Atualizar dados do usuário",
+        "description": "Requer autenticação.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateUserRequest" },
+              "example": {
+                "nome": "Maria Silva",
+                "curso_ocupacao": "Engenharia de Computação",
+                "dtAniversario": "2000-05-15T00:00:00.000Z",
+                "descricao": "Estudante de Engenharia"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dados atualizados com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessageResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/carona": {
+      "post": {
+        "tags": ["Caronas"],
+        "summary": "Criar carona",
+        "description": "Cria uma nova carona. O usuário autenticado é o motorista. Requer autenticação.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateCaronaRequest" },
+              "example": {
+                "veiculo": "Fiat Uno",
+                "vagas": 3,
+                "valor": 15.0,
+                "dtPartida": "2025-02-10T08:00:00.000Z",
+                "dtChegada": "2025-02-10T10:00:00.000Z",
+                "origem": {
+                  "nomeLocal": "Campus Morro do Cruzeiro",
+                  "cep": "35400-000",
+                  "rua": "Rua do Cruzeiro",
+                  "numero": 100,
+                  "bairro": "Centro",
+                  "cidade": "Ouro Preto",
+                  "estado": "MG"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Carona criada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreateCaronaResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Data de partida deve ser anterior à data de chegada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro ao criar carona",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/carona/solicitar/{caronaID}": {
+      "post": {
+        "tags": ["Caronas"],
+        "summary": "Solicitar carona",
+        "description": "Envia solicitação para participar de uma carona como passageiro. Requer autenticação.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "caronaID",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID do documento da carona no Firestore"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitação enviada ou já é passageiro",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessageResponse" },
+                "examples": {
+                  "solicitacaoEnviada": {
+                    "value": { "message": "Solicitação de carona enviada com sucesso!" }
+                  },
+                  "jaPassageiro": {
+                    "value": { "message": "Você já é um passageiro desta carona" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Carona lotada ou motorista solicitando própria carona",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "lotada": { "value": { "message": "Esta carona está lotada" } },
+                  "motorista": { "value": { "message": "O motorista não pode solicitar a própria carona" } }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Carona não encontrada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Carona não encontrada" }
+              }
+            }
+          },
+          "409": {
+            "description": "Solicitação já enviada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Você já enviou uma solicitação para esta carona" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro ao solicitar carona",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
       }
     }
   },
   "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Firebase ID Token",
+        "description": "Token JWT do Firebase Auth"
+      }
+    },
     "schemas": {
+      "AuthenticatedUserResponse": {
+        "type": "object",
+        "properties": {
+          "fotoUrl": { "type": "string", "nullable": true, "description": "URL da foto de perfil" },
+          "nome": { "type": "string", "nullable": true, "description": "Nome do usuário" },
+          "descricao": { "type": "string", "nullable": true, "description": "Descrição/bio do usuário" },
+          "email": { "type": "string", "nullable": true, "format": "email", "description": "Email do usuário" },
+          "genero": { "type": "string", "nullable": true, "description": "Gênero do usuário" }
+        }
+      },
       "MigrationResponse": {
         "type": "object",
         "properties": {
@@ -192,6 +521,75 @@
             "type": "string",
             "description": "Mensagem de erro"
           }
+        }
+      },
+      "UploadProfileRequest": {
+        "type": "object",
+        "required": ["fotoBase64", "descricao"],
+        "properties": {
+          "fotoBase64": {
+            "type": "string",
+            "description": "Imagem em Base64 com cabeçalho data URI (ex: data:image/jpeg;base64,...)"
+          },
+          "descricao": {
+            "type": "string",
+            "description": "Descrição ou bio do perfil"
+          }
+        }
+      },
+      "UploadProfileResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "example": "Perfil atualizado com sucesso" },
+          "fotoUrl": { "type": "string", "description": "URL da foto salva" }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "required": ["nome", "curso_ocupacao", "dtAniversario", "descricao"],
+        "properties": {
+          "nome": { "type": "string", "description": "Nome completo" },
+          "curso_ocupacao": { "type": "string", "description": "Curso ou ocupação" },
+          "dtAniversario": { "type": "string", "format": "date-time", "description": "Data de aniversário (ISO 8601)" },
+          "descricao": { "type": "string", "description": "Descrição/bio" }
+        }
+      },
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "description": "Mensagem de sucesso" }
+        }
+      },
+      "OrigemCarona": {
+        "type": "object",
+        "required": ["nomeLocal", "cep", "rua", "numero", "bairro", "cidade", "estado"],
+        "properties": {
+          "nomeLocal": { "type": "string", "description": "Nome do local de origem" },
+          "cep": { "type": "string", "description": "CEP" },
+          "rua": { "type": "string", "description": "Rua" },
+          "numero": { "type": "number", "description": "Número" },
+          "bairro": { "type": "string", "description": "Bairro" },
+          "cidade": { "type": "string", "description": "Cidade" },
+          "estado": { "type": "string", "description": "Estado (UF)" }
+        }
+      },
+      "CreateCaronaRequest": {
+        "type": "object",
+        "required": ["veiculo", "vagas", "valor", "dtPartida", "dtChegada", "origem"],
+        "properties": {
+          "veiculo": { "type": "string", "description": "Descrição do veículo" },
+          "vagas": { "type": "number", "minimum": 1, "description": "Número de vagas" },
+          "valor": { "type": "number", "minimum": 0, "description": "Valor por passageiro" },
+          "dtPartida": { "type": "string", "format": "date-time", "description": "Data/hora de partida (ISO 8601)" },
+          "dtChegada": { "type": "string", "format": "date-time", "description": "Data/hora de chegada (ISO 8601)" },
+          "origem": { "$ref": "#/components/schemas/OrigemCarona" }
+        }
+      },
+      "CreateCaronaResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "example": "Carona criada com sucesso" },
+          "id": { "type": "string", "description": "ID do documento da carona no Firestore" }
         }
       }
     }
