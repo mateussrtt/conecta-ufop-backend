@@ -446,7 +446,8 @@
       "get": {
         "tags": ["Caronas"],
         "summary": "Buscar carona por ID",
-        "description": "Retorna os detalhes completos de uma carona, incluindo informações do motorista e passageiros.",
+        "description": "Retorna os detalhes completos de uma carona, incluindo informações do motorista e passageiros. Com Authorization opcional: se for o motorista, inclui 'solicitacoes'; se autenticado, inclui 'usuarioEhPassageiro'.",
+        "security": [],
         "parameters": [
           {
             "name": "id",
@@ -865,6 +866,7 @@
         "type": "object",
         "properties": {
           "criadoEm": { "type": "string", "format": "date-time", "description": "Data de criação da carona" },
+          "usuarioEhPassageiro": { "type": "boolean", "description": "Presente quando autenticado. true se o usuário é passageiro confirmado da carona" },
           "motorista": {
             "type": "object",
             "properties": {
@@ -893,6 +895,19 @@
             "items": {
               "type": "object",
               "properties": {
+                "nome": { "type": "string" },
+                "fotoUrl": { "type": "string" },
+                "perfil": { "type": "string", "description": "Perfil formatado (idade - curso/ocupação)" }
+              }
+            }
+          },
+          "solicitacoes": {
+            "type": "array",
+            "description": "Presente quando o usuário autenticado é o motorista da carona",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "description": "ID do usuário solicitante" },
                 "nome": { "type": "string" },
                 "fotoUrl": { "type": "string" },
                 "perfil": { "type": "string", "description": "Perfil formatado (idade - curso/ocupação)" }
