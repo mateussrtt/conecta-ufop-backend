@@ -175,8 +175,12 @@ export const getCaronaById = async (req: Request, res: Response) => {
       }
     }
 
+    const passageirosIds = carona?.passageiros || [];
+    const usuarioEhPassageiro = !!(userId && passageirosIds.includes(userId));
+
     const response: Record<string, unknown> = {
       criadoEm: carona?.criadoEm,
+      ...(userId && { usuarioEhPassageiro }),
       motorista: {
         createdAt: motorista?.createdAt,
         nome: motorista?.nome,
