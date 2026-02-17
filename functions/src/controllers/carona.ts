@@ -330,6 +330,11 @@ export const getAllCaronas = async (req: Request, res: Response) => {
   }
 }
 
+/**
+ * Normaliza o objeto veículo para o formato esperado nas respostas da API.
+ * @param {unknown} veiculo - Dados do veículo (objeto ou string legada)
+ * @return {{ modelo: string, placa: string, veiculoStr: string }} Objeto com modelo, placa e veiculoStr concatenado
+ */
 function normalizarVeiculo(veiculo: unknown): { modelo: string; placa: string; veiculoStr: string } {
   let obj: { modelo: string; placa: string };
   if (veiculo && typeof veiculo === "object" && "modelo" in veiculo && "placa" in veiculo) {
@@ -342,6 +347,11 @@ function normalizarVeiculo(veiculo: unknown): { modelo: string; placa: string; v
   return { ...obj, veiculoStr };
 }
 
+/**
+ * Busca os detalhes do usuário para exibição em listas de caronas.
+ * @param {string} userId - ID do usuário no Firestore
+ * @return {Promise<object|null>} Dados do usuário ou null se não encontrado
+ */
 async function getDetalhesUsuario(userId: string) {
   const userSnap = await admin.firestore().collection("users").doc(userId).get();
   if (!userSnap.exists) return null;
