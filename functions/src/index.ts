@@ -10,17 +10,29 @@ import { initializeApp, getApps } from "firebase/app";
 
 import { onError } from "./middlewares/error";
 import { migrationsUp } from "./controllers/migrations-controller";
-import { createUser, getAuthenticatedUser, uploadUserProfile, updateUserData } from "./controllers/users";
+import {
+  createUser,
+  getAuthenticatedUser,
+  uploadUserProfile,
+  updateUserData,
+} from "./controllers/users";
 import { catchAsyncErrors } from "./middlewares/catch-async-errors";
 import { authenticate } from "./middlewares/authenticate";
 import { setGlobalOptions } from "firebase-functions/v2/options";
- import { createCarona, getCaronaById } from "./controllers/carona";
+import { getCaronaById } from "./controllers/carona";
 import { validateSchema } from "./middlewares/validate-schema";
 import { criarAvaliacaoSchema } from "./schemas/avaliacaoSchema";
-import { criarAvaliacao, getAvaliacoes } from "./controllers/avaliacao-controller";
+import {
+  criarAvaliacao,
+  getAvaliacoes,
+} from "./controllers/avaliacao-controller";
 
- import { createCarona, solicitarCarona, getAllCaronas } from "./controllers/carona";
- 
+import {
+  createCarona,
+  solicitarCarona,
+  getAllCaronas,
+} from "./controllers/carona";
+
 admin.initializeApp();
 
 if (process.env.NODE_ENV === "test") {
@@ -52,17 +64,20 @@ setGlobalOptions({ maxInstances: 10, region: "southamerica-east1" });
 const app = express();
 
 app.use(cors({ origin: true }));
-app.use(express.json({ limit: "10mb"}));
+app.use(express.json({ limit: "10mb" }));
 app.use("/docs/", serve, setup(swagger));
 
-
 app.post("/migrations-up", migrationsUp);
- app.post("/users", catchAsyncErrors(createUser));
-app.post("/avaliacao", authenticate, validateSchema(criarAvaliacaoSchema), criarAvaliacao);
+app.post("/users", catchAsyncErrors(createUser));
+app.post(
+  "/avaliacao",
+  authenticate,
+  validateSchema(criarAvaliacaoSchema),
+  criarAvaliacao
+);
 
 app.get("/avaliacao/:userId", getAvaliacoes);
 app.get("/carona/:id", getCaronaById);
- 
 
 app.get("/caronas", getAllCaronas);
 
@@ -71,10 +86,9 @@ app.post("/users", catchAsyncErrors(createUser));
 app.post("/users/perfil", authenticate, catchAsyncErrors(uploadUserProfile));
 app.put("/users", authenticate, catchAsyncErrors(updateUserData));
 
- 
 app.post("/carona", authenticate, catchAsyncErrors(createCarona));
-app.post("/carona/solicitar/:caronaID",authenticate, solicitarCarona);
- 
+app.post("/carona/solicitar/:caronaID", authenticate, solicitarCarona);
+
 app.use(onError);
 
 export const api = onRequest(app);

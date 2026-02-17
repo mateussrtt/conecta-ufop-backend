@@ -441,6 +441,179 @@
           }
         }
       }
+    },
+    "/carona/{id}": {
+      "get": {
+        "tags": ["Caronas"],
+        "summary": "Buscar carona por ID",
+        "description": "Retorna os detalhes completos de uma carona, incluindo informações do motorista e passageiros.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID do documento da carona no Firestore"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dados da carona",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GetCaronaByIdResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Carona não encontrada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Carona não encontrada" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro ao buscar carona",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/caronas": {
+      "get": {
+        "tags": ["Caronas"],
+        "summary": "Listar caronas disponíveis",
+        "description": "Retorna a lista de caronas abertas com vagas disponíveis.",
+        "responses": {
+          "200": {
+            "description": "Lista de caronas disponíveis (pode ser vazia)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ListCaronaItem" }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro ao buscar caronas disponíveis",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/avaliacao": {
+      "post": {
+        "tags": ["Usuários"],
+        "summary": "Criar avaliação de motorista",
+        "description": "Cria uma avaliação para o motorista de uma carona já realizada. Requer autenticação e que o usuário seja passageiro da carona.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateAvaliacaoRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Avaliação criada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreateAvaliacaoResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Usuário não é passageiro dessa carona",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Usuário não é passageiro dessa carona" }
+              }
+            }
+          },
+          "404": {
+            "description": "Carona não encontrada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/avaliacao/{userId}": {
+      "get": {
+        "tags": ["Usuários"],
+        "summary": "Listar avaliações de um motorista",
+        "description": "Retorna o resumo do motorista e as avaliações recebidas como motorista.",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID do usuário motorista no Firestore"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dados do motorista e suas avaliações",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GetAvaliacoesResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Usuário não encontrado" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -590,6 +763,135 @@
         "properties": {
           "message": { "type": "string", "example": "Carona criada com sucesso" },
           "id": { "type": "string", "description": "ID do documento da carona no Firestore" }
+        }
+      },
+      "GetCaronaByIdResponse": {
+        "type": "object",
+        "properties": {
+          "criadoEm": { "type": "string", "format": "date-time", "description": "Data de criação da carona" },
+          "motorista": {
+            "type": "object",
+            "properties": {
+              "createdAt": { "type": "string", "format": "date-time", "nullable": true },
+              "nome": { "type": "string" },
+              "notaMedia": { "type": "number" },
+              "fotoUrl": { "type": "string" },
+              "descricao": { "type": "string", "nullable": true },
+              "caronasCont": { "type": "integer", "description": "Quantidade de caronas como motorista" },
+              "perfil": { "type": "string", "description": "Perfil formatado (idade - curso/ocupação)" }
+            }
+          },
+          "veiculo": { "type": "string" },
+          "valor": { "type": "number" },
+          "vagasDisponiveis": { "type": "integer" },
+          "origem": { "$ref": "#/components/schemas/OrigemCarona" },
+          "destino": {
+            "type": "object",
+            "description": "Destino da carona",
+            "additionalProperties": true
+          },
+          "dtPartida": { "type": "string", "format": "date-time" },
+          "dtChegada": { "type": "string", "format": "date-time" },
+          "passageiros": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "nome": { "type": "string" },
+                "fotoUrl": { "type": "string" },
+                "perfil": { "type": "string", "description": "Perfil formatado (idade - curso/ocupação)" }
+              }
+            }
+          }
+        }
+      },
+      "ListCaronaItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "ID da carona" },
+          "criadoEm": { "type": "string", "format": "date-time" },
+          "motorista": {
+            "type": "object",
+            "properties": {
+              "nome": { "type": "string" },
+              "notaMedia": { "type": "number" },
+              "fotoUrl": { "type": "string", "nullable": true }
+            }
+          },
+          "veiculo": { "type": "string" },
+          "valor": { "type": "number" },
+          "vagasDisponiveis": { "type": "integer" },
+          "origem": { "$ref": "#/components/schemas/OrigemCarona" },
+          "destino": {
+            "type": "object",
+            "description": "Destino da carona",
+            "additionalProperties": true
+          },
+          "dtPartida": { "type": "string", "format": "date-time" },
+          "dtChegada": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateAvaliacaoRequest": {
+        "type": "object",
+        "required": ["caronaID", "nota", "comentario"],
+        "properties": {
+          "caronaID": {
+            "type": "string",
+            "description": "ID da carona avaliada"
+          },
+          "nota": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "Nota de 1 a 5"
+          },
+          "comentario": {
+            "type": "string",
+            "description": "Comentário sobre a carona/motorista"
+          }
+        }
+      },
+      "CreateAvaliacaoResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "ID da avaliação criada" },
+          "caronaID": { "type": "string" },
+          "nota": { "type": "integer" },
+          "comentario": { "type": "string" },
+          "userId": { "type": "string", "description": "ID do passageiro que avaliou" },
+          "motoristaId": { "type": "string", "description": "ID do motorista avaliado" },
+          "criadoEm": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "GetAvaliacoesResponse": {
+        "type": "object",
+        "properties": {
+          "usuario": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "fotoUrl": { "type": "string" },
+              "nome": { "type": "string" },
+              "notaMedia": { "type": "number" },
+              "perfil": { "type": "string" },
+              "descricao": { "type": "string" },
+              "createdAt": { "type": "string", "format": "date-time", "nullable": true },
+              "contCaronas": { "type": "integer", "description": "Quantidade de caronas como motorista" }
+            }
+          },
+          "avaliacoes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "nome": { "type": "string" },
+                "fotoUrl": { "type": "string" },
+                "createdAt": { "type": "string", "format": "date-time", "nullable": true },
+                "nota": { "type": "integer" },
+                "comentario": { "type": "string" }
+              }
+            }
+          }
         }
       }
     }
