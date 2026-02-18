@@ -81,7 +81,7 @@ export const getCaronaById = async (req: Request, res: Response) => {
     const carona = caronaSnap.data()!;
 
     const motoristaSnap = await admin.firestore()
-      .collection("users")
+      .collection("usuarios")
       .doc(carona?.motoristaId)
       .get();
 
@@ -129,7 +129,7 @@ export const getCaronaById = async (req: Request, res: Response) => {
 
     if (carona?.passageiros?.length > 0) {
       for (const passageiroId of carona.passageiros) {
-        const userSnap = await admin.firestore().collection("users").doc(passageiroId).get();
+        const userSnap = await admin.firestore().collection("usuarios").doc(passageiroId).get();
 
         if (userSnap.exists) {
           const user = userSnap.data();
@@ -157,7 +157,7 @@ export const getCaronaById = async (req: Request, res: Response) => {
       const solicitacoesIds = carona?.solicitacoes || [];
       solicitacoes = [];
       for (const sid of solicitacoesIds) {
-        const userSnap = await admin.firestore().collection("users").doc(sid).get();
+        const userSnap = await admin.firestore().collection("usuarios").doc(sid).get();
         if (userSnap.exists) {
           const u = userSnap.data();
           let idade = 0;
@@ -291,7 +291,7 @@ export const getAllCaronas = async (req: Request, res: Response) => {
 
       let motoristaData = { nome: "Desconhecido", notaMedia: 0, fotoUrl: "" };
       if (data.motoristaId) {
-        const userDoc = await admin.firestore().collection("users").doc(data.motoristaId).get();
+        const userDoc = await admin.firestore().collection("usuarios").doc(data.motoristaId).get();
         if (userDoc.exists) {
           const uData = userDoc.data();
           motoristaData = {
@@ -353,7 +353,7 @@ function normalizarVeiculo(veiculo: unknown): { modelo: string; placa: string; v
  * @return {Promise<object|null>} Dados do usuário ou null se não encontrado
  */
 async function getDetalhesUsuario(userId: string) {
-  const userSnap = await admin.firestore().collection("users").doc(userId).get();
+  const userSnap = await admin.firestore().collection("usuarios").doc(userId).get();
   if (!userSnap.exists) return null;
   const u = userSnap.data();
   let idade = 0;

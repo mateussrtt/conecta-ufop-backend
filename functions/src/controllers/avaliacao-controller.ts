@@ -47,7 +47,7 @@ export const getAvaliacoes = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
 
-    const userRef = admin.firestore().collection("users").doc(userId);
+    const userRef = admin.firestore().collection("usuarios").doc(userId);
     const userSnap = await userRef.get();
 
     if (!userSnap.exists) {
@@ -69,7 +69,7 @@ export const getAvaliacoes = async (req: Request, res: Response) => {
       somaNotas += data.nota;
 
       const avaliadorSnap = await admin.firestore()
-        .collection("users")
+        .collection("usuarios")
         .doc(data.userId)
         .get();
 
