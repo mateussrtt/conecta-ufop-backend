@@ -5,6 +5,21 @@ export const postUserSchema = object({
     email: string()
         .email("Email deve ser um email válido")
         .required("Email é obrigatório"),
+    senha: string()
+        .min(8, "A senha deve ter no mínimo 8 caracteres")
+        .matches(
+            /[A-Z]/,
+            "A senha deve ter pelo menos 1 letra maiúscula"
+        )
+        .matches(
+            /[0-9]/,
+            "A senha deve ter pelo menos um número"
+        )
+        .matches(
+            /[^A-Za-z0-9]/,
+            "A senha deve ter pelo menos um caractere especial"
+        )
+        .required("Senha é obrigatória"),
     curso_ocupacao: string().required("Curso/ocupação é obrigatório"),
     dtAniversario: date()
         .required("Data de aniversário é obrigatória")

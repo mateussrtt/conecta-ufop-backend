@@ -11,16 +11,13 @@ export const createUser = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  // Primeiro, validamos se os campos são válidos E compatíveis com o schema
   const validatedData = await postUserSchema.validate(req.body, {
     abortEarly: false,
     stripUnknown: true,
   });
 
-  // eslint-disable-next-line camelcase
-  const { nome, email, curso_ocupacao, dtAniversario } = validatedData;
+  const { nome, email, senha, curso_ocupacao, dtAniversario } = validatedData;
 
-  // Aqui, verificamos se o email já existe
   const usersRef = admin.firestore().collection("usuarios");
   const existingUser = await usersRef
     .where("email", "==", email)
@@ -32,11 +29,25 @@ export const createUser = async (
     return;
   }
 
-  // Aqui, convertemos a data de aniversário para timestamp do Firestore
+  let userRecord;
+  try {
+    userRecord = await admin.auth().createUser({
+      email,
+      password: senha,
+      displayName: nome,
+    });
+  } catch (err: unknown) {
+
+    logger.error("Erro ao criar usuário no Auth", err);
+    res.status(500).send({ message: "Erro interno ao criar usuário", error: err });
+    return;
+  }
+
+  const uid = userRecord.uid;
+
   const dtAniversarioTimestamp =
     admin.firestore.Timestamp.fromDate(dtAniversario);
 
-  // Aqui, montamos o documento do usuário
   const userData = {
     nome,
     email,
@@ -47,16 +58,20 @@ export const createUser = async (
     caronasOfericidasCont: 0,
   };
 
-  // Aqui, criamos o documento do usuário
-  const docRef = await usersRef.add(userData);
+  try {
+    await usersRef.doc(uid).set(userData);
+  } catch (err) {
+    await admin.auth().deleteUser(uid);
+    logger.error("Erro ao criar documento do usuário no Firestore", err);
+    res.status(500).send({ message: "Erro interno ao salvar usuário" });
+    return;
+  }
 
-  // Logo para testes
-  logger.info(`Usuário criado com ID: ${docRef.id}`);
+  logger.info(`Usuário criado com ID: ${uid}`);
 
-  // Retorno da função
   res.status(201).send({
     message: "Usuário criado com sucesso",
-    id: docRef.id,
+    id: uid,
   });
 };
 

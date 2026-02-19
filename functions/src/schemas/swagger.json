@@ -166,6 +166,7 @@
               "example": {
                 "nome": "Maria Silva",
                 "email": "maria.silva@aluno.ufop.edu.br",
+                "senha": "Senha@123",
                 "curso_ocupacao": "Engenharia de Computação",
                 "dtAniversario": "2000-05-15T00:00:00.000Z"
               }
@@ -728,7 +729,7 @@
       },
       "CreateUserRequest": {
         "type": "object",
-        "required": ["nome", "email", "curso_ocupacao", "dtAniversario"],
+        "required": ["nome", "email", "senha", "curso_ocupacao", "dtAniversario"],
         "properties": {
           "nome": {
             "type": "string",
@@ -740,6 +741,12 @@
             "format": "email",
             "description": "Email do usuário (deve ser único)",
             "example": "maria.silva@aluno.ufop.edu.br"
+          },
+          "senha": {
+            "type": "string",
+            "minLength": 8,
+            "description": "Senha do usuário (mínimo 8 caracteres, 1 maiúscula, 1 número, 1 caractere especial)",
+            "example": "Senha@123"
           },
           "curso_ocupacao": {
             "type": "string",
