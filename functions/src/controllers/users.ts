@@ -80,7 +80,7 @@ export const uploadUserProfile = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { id: uid } = req.user!;
+  const { uid } = req.user!;
   const validatedData = await uploadProfileImageSchema.validate(req.body, {
     abortEarly: false,
   });
