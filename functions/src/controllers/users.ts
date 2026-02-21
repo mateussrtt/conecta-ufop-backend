@@ -16,6 +16,7 @@ export const createUser = async (
     stripUnknown: true,
   });
 
+  // eslint-disable-next-line camelcase
   const { nome, email, senha, curso_ocupacao, dtAniversario } = validatedData;
 
   const usersRef = admin.firestore().collection("usuarios");
@@ -110,7 +111,7 @@ export const uploadUserProfile = async (
       public: true,
     });
 
-    const fotoUrl = "https://storage.googleapis.com/${bucket.name}/$filePath}";
+    const fotoUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
     await admin.firestore().collection("usuarios").doc(uid).update({
       fotoUrl: fotoUrl,
