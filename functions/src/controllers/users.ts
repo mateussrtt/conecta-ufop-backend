@@ -108,8 +108,8 @@ export const uploadUserProfile = async (
   try {
     await file.save(buffer, {
       metadata: { contentType: mimeType },
-      public: true,
     });
+    await file.makePublic();
 
     const fotoUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
