@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as admin from "firebase-admin";
-
+import * as logger from "firebase-functions/logger";
 
 export const criarAvaliacao = async (req: Request, res: Response) => {
   try {
@@ -38,7 +38,7 @@ export const criarAvaliacao = async (req: Request, res: Response) => {
       ...avaliacao,
     });
   } catch (error) {
-    console.error(error);
+    logger.error("Erro ao criar avaliação", error);
     return res.status(500).json({ message: "Erro interno do servidor" });
   }
 };
@@ -114,7 +114,7 @@ export const getAvaliacoes = async (req: Request, res: Response) => {
       avaliacoes,
     });
   } catch (error) {
-    console.error(error);
+    logger.error("Erro ao buscar avaliações", error);
     return res.status(500).json({ message: "Erro interno do servidor" });
   }
 };

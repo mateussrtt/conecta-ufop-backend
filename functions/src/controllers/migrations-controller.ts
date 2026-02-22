@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as admin from "firebase-admin";
 import { FieldValue } from "@google-cloud/firestore";
+import * as logger from "firebase-functions/logger";
 
 interface Migration {
   fn: () => Promise<void>;
@@ -42,9 +43,15 @@ export const migrationsUp = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  for (const migration of migrations) {
-    await runMigration(migration);
+  try {
+    for (const migration of migrations) {
+      await runMigration(migration);
+    }
+    res.status(200).send({ message: "Migrations completed!" });
+  } catch (err) {
+    logger.error("Erro ao executar migrations", err);
+    res.status(500).send({
+      message: "Erro interno ao executar migrations",
+    });
   }
-
-  res.status(200).send({ message: "Migrations completed!" });
 };

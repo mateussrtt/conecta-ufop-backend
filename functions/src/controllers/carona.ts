@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as admin from "firebase-admin";
 import { postCaronaSchema } from "../schemas/caronaSchema";
+import * as logger from "firebase-functions/logger";
 
 
 
@@ -56,6 +57,7 @@ export const createCarona = async (req: Request, res: Response) => {
       id: docRef.id,
     });
   } catch (error: any) {
+    logger.error("Erro ao criar carona", error);
     return res.status(500).json({
       message: "Erro ao criar carona",
       error: error.message,
@@ -204,6 +206,7 @@ export const getCaronaById = async (req: Request, res: Response) => {
     }
     return res.status(200).json(response);
   } catch (error) {
+    logger.error("Erro ao buscar carona por ID", error);
     return res.status(500).json({
       message: "Erro ao buscar carona",
     });
@@ -263,6 +266,7 @@ export const solicitarCarona = async (req: Request, res: Response) => {
       .status(200)
       .json({ message: "Solicitação de carona enviada com sucesso!" });
   } catch (error: any) {
+    logger.error("Erro ao solicitar carona", error);
     return res.status(500).json({
       message: "Erro ao solicitar carona",
       error: error.message,
@@ -323,6 +327,7 @@ export const getAllCaronas = async (req: Request, res: Response) => {
     return res.status(200).json(caronasFiltradas);
 
   } catch (error: any) {
+    logger.error("Erro ao buscar caronas disponíveis", error);
     return res.status(500).json({
       message: "Erro ao buscar caronas disponíveis",
       error: error.message
@@ -503,6 +508,7 @@ export const getMinhasCaronas = async (req: Request, res: Response) => {
       comoPassageiro,
     });
   } catch (error: any) {
+    logger.error("Erro ao listar minhas caronas", error);
     return res.status(500).json({
       message: "Erro ao listar minhas caronas",
       error: error.message,
@@ -567,10 +573,10 @@ export const responderSolicitacao = async (req: Request, res: Response) => {
       return res.status(200).json({ message: "SOlicitação aceita! Passageiro confirmado." });
     }
   } catch (error: any) {
+    logger.error("Erro ao processar solicitação de carona", error);
     return res.status(500).json({
       message: "Erro ao processar solicitação de carona",
-      error: error.message
-
+      error: error.message,
     });
   }
 };
