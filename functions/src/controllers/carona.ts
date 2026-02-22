@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as admin from "firebase-admin";
-import { postCaronaSchema } from "../schemas/caronaSchema";
+import { postCaronaSchema, patchCaronaStatusSchema } from "../schemas/caronaSchema";
 import * as logger from "firebase-functions/logger";
 
 export const createCarona = async (req: Request, res: Response) => {
@@ -398,7 +398,7 @@ export const getMinhasCaronas = async (req: Request, res: Response) => {
       const vagasTotal = data.vagas || 0;
       const vagasDisponiveis = vagasTotal - passageirosIds.length;
 
-      const status = solicitacoesIds.length > 0 ? "SOLICITADA" : "CONFIRMADA";
+      const status = data.status || "ABERTA";
 
       const solicitacoes = [];
       for (const sid of solicitacoesIds) {
@@ -460,8 +460,14 @@ export const getMinhasCaronas = async (req: Request, res: Response) => {
       const vagasTotal = data.vagas || 0;
       const vagasDisponiveis = vagasTotal - passageirosIds.length;
 
+      const statusCarona = data.status || "ABERTA";
+      const souMotorista = data.motoristaId === userId;
       const souConfirmado = passageirosIds.includes(userId);
-      const status = souConfirmado ? "CONFIRMADO" : "SOLICITADO";
+      const status = souMotorista
+        ? statusCarona
+        : (statusCarona === "ABERTA"
+          ? (souConfirmado ? "CONFIRMADO" : "SOLICITADO")
+          : statusCarona);
 
       const passageiros = [];
       for (const pid of passageirosIds) {
@@ -510,6 +516,58 @@ export const getMinhasCaronas = async (req: Request, res: Response) => {
     return res.status(500).json({
       message: "Erro ao listar minhas caronas",
       error: error.message,
+    });
+  }
+};
+
+export const alterarStatusCarona = async (req: Request, res: Response) => {
+  const { status } = await patchCaronaStatusSchema.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+  const { caronaID } = req.params;
+  const motoristaId = (req as any).user?.uid;
+
+  try {
+
+    const caronaRef = admin.firestore().collection("caronas").doc(caronaID);
+    const caronaDoc = await caronaRef.get();
+
+    if (!caronaDoc.exists) {
+      return res.status(404).json({ message: "Carona não encontrada" });
+    }
+
+    const data = caronaDoc.data();
+    if (data?.motoristaId !== motoristaId) {
+      return res.status(403).json({
+        message: "Apenas o motorista responsável pode alterar o status da carona",
+      });
+    }
+
+    const statusAtual = data?.status || "ABERTA";
+    if (status === "INICIADA" && statusAtual !== "ABERTA") {
+      return res.status(400).json({
+        message: "Só é possível iniciar uma carona com status ABERTA",
+      });
+    }
+    if (status === "FINALIZADA" && statusAtual !== "INICIADA") {
+      return res.status(400).json({
+        message: "Só é possível finalizar uma carona com status INICIADA",
+      });
+    }
+
+    await caronaRef.update({
+      status,
+    });
+
+    return res.status(200).json({
+      message: `Carona ${status === "INICIADA" ? "iniciada" : "finalizada"} com sucesso`,
+      status,
+    });
+  } catch (error: unknown) {
+    logger.error("Erro ao alterar status da carona", error);
+    return res.status(500).json({
+      message: "Erro ao alterar status da carona",
     });
   }
 };

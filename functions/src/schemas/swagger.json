@@ -443,6 +443,97 @@
         }
       }
     },
+    "/carona/{caronaID}/status": {
+      "patch": {
+        "tags": ["Caronas"],
+        "summary": "Alterar status da carona",
+        "description": "O motorista pode alterar o status da carona para INICIADA ou FINALIZADA. INICIADA: apenas quando status atual é ABERTA. FINALIZADA: apenas quando status atual é INICIADA. Requer autenticação.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "caronaID",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID do documento da carona no Firestore"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PatchCaronaStatusRequest" },
+              "example": { "status": "INICIADA" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status alterado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PatchCaronaStatusResponse" },
+                "example": { "message": "Carona iniciada com sucesso", "status": "INICIADA" }
+              }
+            }
+          },
+          "400": {
+            "description": "Transição de status inválida",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "iniciar": { "value": { "message": "Só é possível iniciar uma carona com status ABERTA" } },
+                  "finalizar": { "value": { "message": "Só é possível finalizar uma carona com status INICIADA" } }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+            }
+          },
+          "403": {
+            "description": "Apenas o motorista pode alterar o status",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Apenas o motorista responsável pode alterar o status da carona" }
+              }
+            }
+          },
+          "404": {
+            "description": "Carona não encontrada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Carona não encontrada" }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Status deve ser INICIADA ou FINALIZADA" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro ao alterar status da carona",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/carona/{id}": {
       "get": {
         "tags": ["Caronas"],
@@ -867,6 +958,24 @@
         "properties": {
           "message": { "type": "string", "example": "Carona criada com sucesso" },
           "id": { "type": "string", "description": "ID do documento da carona no Firestore" }
+        }
+      },
+      "PatchCaronaStatusRequest": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["INICIADA", "FINALIZADA"],
+            "description": "Novo status da carona"
+          }
+        }
+      },
+      "PatchCaronaStatusResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "description": "Mensagem de sucesso" },
+          "status": { "type": "string", "enum": ["INICIADA", "FINALIZADA"], "description": "Status atualizado" }
         }
       },
       "GetCaronaByIdResponse": {

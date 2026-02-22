@@ -45,7 +45,14 @@ export const postCaronaSchema = yup.object().shape({
       numero: yup.number().required("O campo 'numero' é obrigatório"),
       bairro: yup.string().required("O campo 'bairro' é obrigatório"),
       cidade: yup.string().required("O campo 'cidade' é obrigatório"),
-      estado: yup.string().required("O campo 'estado' é obrigatório"),
-    })
-    .required("O campo 'destino' é obrigatório"),
+      estado: yup.string()    .required("O campo 'estado' é obrigatório"),
+  })
+  .required("O campo 'destino' é obrigatório"),
+});
+
+export const patchCaronaStatusSchema = yup.object({
+  status: yup
+    .string()
+    .oneOf(["INICIADA", "FINALIZADA"], "Status deve ser INICIADA ou FINALIZADA")
+    .required("O campo 'status' é obrigatório"),
 });

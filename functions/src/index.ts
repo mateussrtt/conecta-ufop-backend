@@ -25,6 +25,7 @@ import {
   solicitarCarona,
   getAllCaronas,
   getMinhasCaronas,
+  alterarStatusCarona,
 } from "./controllers/carona";
 import { validateSchema } from "./middlewares/validate-schema";
 import { criarAvaliacaoSchema } from "./schemas/avaliacaoSchema";
@@ -89,6 +90,7 @@ app.put("/users", authenticate, catchAsyncErrors(updateUserData));
 
 app.post("/carona", authenticate, catchAsyncErrors(createCarona));
 app.post("/carona/solicitar/:caronaID", authenticate, catchAsyncErrors(solicitarCarona));
+app.patch("/carona/:caronaID/status", authenticate, catchAsyncErrors(alterarStatusCarona));
 
 app.use(onError);
 
