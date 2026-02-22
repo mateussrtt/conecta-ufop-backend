@@ -11,15 +11,15 @@ export const createUser = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const validatedData = await postUserSchema.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+
+  // eslint-disable-next-line camelcase
+  const { nome, email, senha, curso_ocupacao, dtAniversario } = validatedData;
+
   try {
-    const validatedData = await postUserSchema.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
-
-    // eslint-disable-next-line camelcase
-    const { nome, email, senha, curso_ocupacao, dtAniversario } = validatedData;
-
     const usersRef = admin.firestore().collection("usuarios");
     const existingUser = await usersRef
       .where("email", "==", email)
@@ -86,12 +86,13 @@ export const uploadUserProfile = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const { uid } = req.user!;
+  const validatedData = await uploadProfileImageSchema.validate(req.body, {
+    abortEarly: false,
+  });
+  const { fotoBase64, descricao } = validatedData;
+
   try {
-    const { uid } = req.user!;
-    const validatedData = await uploadProfileImageSchema.validate(req.body, {
-      abortEarly: false,
-    });
-    const { fotoBase64, descricao } = validatedData;
     const matches = fotoBase64.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
 
     if (!matches || matches.length !== 3) {
@@ -141,14 +142,13 @@ export const updateUserData = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const { id: uid } = req.user!;
+  const validatedData = await updateUserSchema.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+
   try {
-    const { id: uid } = req.user!;
-
-    const validatedData = await updateUserSchema.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
-
     const updateData = {
       nome: validatedData.nome,
       curso_ocupacao: validatedData.curso_ocupacao,

@@ -76,10 +76,10 @@ app.post(
   criarAvaliacao
 );
 
-app.get("/avaliacao/:userId", getAvaliacoes);
+app.get("/avaliacao/:userId", catchAsyncErrors(getAvaliacoes));
 app.get("/carona/:id", optionalAuthenticate, catchAsyncErrors(getCaronaById));
 
-app.get("/caronas", getAllCaronas);
+app.get("/caronas", catchAsyncErrors(getAllCaronas));
 app.get("/caronas/minhasCaronas", authenticate, catchAsyncErrors(getMinhasCaronas));
 
 app.get("/users/me", authenticate, catchAsyncErrors(getAuthenticatedUser));
@@ -88,7 +88,7 @@ app.post("/users/perfil", authenticate, catchAsyncErrors(uploadUserProfile));
 app.put("/users", authenticate, catchAsyncErrors(updateUserData));
 
 app.post("/carona", authenticate, catchAsyncErrors(createCarona));
-app.post("/carona/solicitar/:caronaID", authenticate, solicitarCarona);
+app.post("/carona/solicitar/:caronaID", authenticate, catchAsyncErrors(solicitarCarona));
 
 app.use(onError);
 

@@ -487,7 +487,7 @@
         }
       }
     },
-    "/caronas/minhas": {
+    "/caronas/minhasCaronas": {
       "get": {
         "tags": ["Caronas"],
         "summary": "Listar minhas caronas",

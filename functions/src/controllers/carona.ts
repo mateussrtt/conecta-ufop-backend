@@ -3,25 +3,23 @@ import * as admin from "firebase-admin";
 import { postCaronaSchema } from "../schemas/caronaSchema";
 import * as logger from "firebase-functions/logger";
 
-
-
 export const createCarona = async (req: Request, res: Response) => {
+  const validatedData = await postCaronaSchema.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+
+  const {
+    veiculo,
+    vagas,
+    valor,
+    dtPartida,
+    dtChegada,
+    origem,
+    destino,
+  } = validatedData;
+
   try {
-    const validatedData = await postCaronaSchema.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
-
-    const {
-      veiculo,
-      vagas,
-      valor,
-      dtPartida,
-      dtChegada,
-      origem,
-      destino,
-    } = validatedData;
-
     const partida = new Date(dtPartida);
     const chegada = new Date(dtChegada);
 
@@ -48,6 +46,7 @@ export const createCarona = async (req: Request, res: Response) => {
       motoristaId,
       status: "ABERTA",
       passageiros: [],
+      solicitacoes: [],
     };
 
     const docRef = await admin.firestore().collection("caronas").add(caronaData);
@@ -56,11 +55,10 @@ export const createCarona = async (req: Request, res: Response) => {
       message: "Carona criada com sucesso",
       id: docRef.id,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error("Erro ao criar carona", error);
     return res.status(500).json({
       message: "Erro ao criar carona",
-      error: error.message,
     });
   }
 };
