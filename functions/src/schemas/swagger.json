@@ -534,6 +534,115 @@
         }
       }
     },
+    "/carona/{caronaID}/solicitacao/{passageiroID}": {
+      "patch": {
+        "tags": ["Caronas"],
+        "summary": "Aceitar ou recusar solicitação de carona",
+        "description": "O motorista aceita ou recusa a solicitação de um passageiro. Ao aceitar: remove da lista de solicitações e adiciona aos passageiros. Ao recusar: remove da lista de solicitações e adiciona ao array de recusados. Requer autenticação.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "caronaID",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID do documento da carona no Firestore"
+          },
+          {
+            "name": "passageiroID",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID do usuário que enviou a solicitação"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ResponderSolicitacaoRequest" },
+              "example": { "aceite": true }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Solicitação aceita ou recusada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessageResponse" },
+                "examples": {
+                  "aceita": { "value": { "message": "Solicitação aceita! Passageiro confirmado." } },
+                  "recusada": { "value": { "message": "Solicitação recusada com sucesso." } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Carona lotada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Não é possível aceitar: Carona lotada." }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Apenas o motorista pode gerenciar solicitações",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Apenas o motorista responsável pode gerenciar solicitações." }
+              }
+            }
+          },
+          "404": {
+            "description": "Carona ou solicitação não encontrada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "carona": { "value": { "message": "Carona não encontrada." } },
+                  "solicitacao": { "value": { "message": "Solicitação deste passageiro não encontrada." } }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Passageiro já confirmado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Este passageiro já está confirmado na carona" }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+            }
+          },
+          "500": {
+            "description": "Erro ao processar solicitação",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/carona/{id}": {
       "get": {
         "tags": ["Caronas"],
@@ -958,6 +1067,16 @@
         "properties": {
           "message": { "type": "string", "example": "Carona criada com sucesso" },
           "id": { "type": "string", "description": "ID do documento da carona no Firestore" }
+        }
+      },
+      "ResponderSolicitacaoRequest": {
+        "type": "object",
+        "required": ["aceite"],
+        "properties": {
+          "aceite": {
+            "type": "boolean",
+            "description": "true para aceitar, false para recusar (adiciona ao array de recusados)"
+          }
         }
       },
       "PatchCaronaStatusRequest": {

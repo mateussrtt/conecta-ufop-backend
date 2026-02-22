@@ -50,6 +50,12 @@ export const postCaronaSchema = yup.object().shape({
   .required("O campo 'destino' é obrigatório"),
 });
 
+export const responderSolicitacaoSchema = yup.object({
+  aceite: yup
+    .boolean()
+    .required("O campo 'aceite' é obrigatório e deve ser booleano"),
+});
+
 export const patchCaronaStatusSchema = yup.object({
   status: yup
     .string()

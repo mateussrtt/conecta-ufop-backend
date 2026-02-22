@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import * as admin from "firebase-admin";
-import { postCaronaSchema, patchCaronaStatusSchema } from "../schemas/caronaSchema";
+import {
+  postCaronaSchema,
+  patchCaronaStatusSchema,
+  responderSolicitacaoSchema,
+} from "../schemas/caronaSchema";
 import * as logger from "firebase-functions/logger";
 
 export const createCarona = async (req: Request, res: Response) => {
@@ -47,6 +51,7 @@ export const createCarona = async (req: Request, res: Response) => {
       status: "ABERTA",
       passageiros: [],
       solicitacoes: [],
+      recusados: [],
     };
 
     const docRef = await admin.firestore().collection("caronas").add(caronaData);
@@ -227,7 +232,7 @@ export const solicitarCarona = async (req: Request, res: Response) => {
     const data = caronaDoc.data();
 
     const capacidadeTotal = data?.vagas || 0;
-    const passageirosConfirmados = data?.passageiros?.lenght || 0;
+    const passageirosConfirmados = data?.passageiros?.length || 0;
     const vagasDisponiveis = capacidadeTotal - passageirosConfirmados;
 
     if (vagasDisponiveis <= 0) {
@@ -573,20 +578,19 @@ export const alterarStatusCarona = async (req: Request, res: Response) => {
 };
 
 export const responderSolicitacao = async (req: Request, res: Response) => {
+  const { aceite } = await responderSolicitacaoSchema.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+  const { caronaID, passageiroID } = req.params;
+  const motoristaIdLogado = (req as any).user?.uid || (req as any).user?.id;
+
   try {
-    const { caronaID, passageiroID } = req.params;
-    const { aceite } = req.body;
-    const motoristaIdLogado = (req as any).user.uid || (req as any).user.id;
-
-    if (typeof aceite !== "boolean") {
-      return res.status(400).json({ message: "O campo 'aceite' é obrigatório e deve ser booleano." });
-    }
-
     const caronaRef = admin.firestore().collection("caronas").doc(caronaID);
     const caronaDoc = await caronaRef.get();
 
     if (!caronaDoc.exists) {
-      return res.status(404).json({ message: "Carona não econtrada." });
+      return res.status(404).json({ message: "Carona não encontrada." });
     }
 
     const data = caronaDoc.data();
@@ -602,13 +606,11 @@ export const responderSolicitacao = async (req: Request, res: Response) => {
 
     if (aceite === false) {
       await caronaRef.update({
-        solicitacoes: admin.firestore.FieldValue.arrayRemove(passageiroID)
+        solicitacoes: admin.firestore.FieldValue.arrayRemove(passageiroID),
+        recusados: admin.firestore.FieldValue.arrayUnion(passageiroID),
       });
-      return res.status(200).json({ message: "Solciitação recusada com sucesso." });
-
-    }
-
-    else {
+      return res.status(200).json({ message: "Solicitação recusada com sucesso." });
+    } else {
       const capacidadeTotal = data?.vagas || 0;
       const passageirosConfirmados = data?.passageiros || [];
       const vagasDisponiveis = capacidadeTotal - passageirosConfirmados.length;
@@ -626,7 +628,7 @@ export const responderSolicitacao = async (req: Request, res: Response) => {
         passageiros: admin.firestore.FieldValue.arrayUnion(passageiroID)
       });
 
-      return res.status(200).json({ message: "SOlicitação aceita! Passageiro confirmado." });
+      return res.status(200).json({ message: "Solicitação aceita! Passageiro confirmado." });
     }
   } catch (error: any) {
     logger.error("Erro ao processar solicitação de carona", error);
