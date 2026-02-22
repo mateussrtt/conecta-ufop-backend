@@ -494,6 +494,7 @@
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
             }
           },
           "403": {
@@ -630,6 +631,7 @@
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
             }
           },
           "500": {
