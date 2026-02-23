@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://api-jbiicm2joa-rj.a.run.app",
+      "url": "https://api-zxfogaaqra-rj.a.run.app",
       "description": "Produção"
     }
   ],
@@ -166,6 +166,7 @@
               "example": {
                 "nome": "Maria Silva",
                 "email": "maria.silva@aluno.ufop.edu.br",
+                "senha": "Senha@123",
                 "curso_ocupacao": "Engenharia de Computação",
                 "dtAniversario": "2000-05-15T00:00:00.000Z"
               }
@@ -299,7 +300,7 @@
             "application/json": {
               "schema": { "$ref": "#/components/schemas/CreateCaronaRequest" },
               "example": {
-                "veiculo": "Fiat Uno",
+                "veiculo": { "modelo": "Fiat Uno", "placa": "ABC-1234" },
                 "vagas": 3,
                 "valor": 15.0,
                 "dtPartida": "2025-02-10T08:00:00.000Z",
@@ -441,6 +442,462 @@
           }
         }
       }
+    },
+    "/carona/{caronaID}/status": {
+      "patch": {
+        "tags": ["Caronas"],
+        "summary": "Alterar status da carona",
+        "description": "O motorista pode alterar o status da carona para INICIADA ou FINALIZADA. INICIADA: apenas quando status atual é ABERTA. FINALIZADA: apenas quando status atual é INICIADA. Requer autenticação.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "caronaID",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID do documento da carona no Firestore"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PatchCaronaStatusRequest" },
+              "example": { "status": "INICIADA" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status alterado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PatchCaronaStatusResponse" },
+                "example": { "message": "Carona iniciada com sucesso", "status": "INICIADA" }
+              }
+            }
+          },
+          "400": {
+            "description": "Transição de status inválida",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "iniciar": { "value": { "message": "Só é possível iniciar uma carona com status ABERTA" } },
+                  "finalizar": { "value": { "message": "Só é possível finalizar uma carona com status INICIADA" } }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Apenas o motorista pode alterar o status",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Apenas o motorista responsável pode alterar o status da carona" }
+              }
+            }
+          },
+          "404": {
+            "description": "Carona não encontrada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Carona não encontrada" }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Status deve ser INICIADA ou FINALIZADA" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro ao alterar status da carona",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/carona/{caronaID}/solicitacao/{passageiroID}": {
+      "patch": {
+        "tags": ["Caronas"],
+        "summary": "Aceitar ou recusar solicitação de carona",
+        "description": "O motorista aceita ou recusa a solicitação de um passageiro. Ao aceitar: remove da lista de solicitações e adiciona aos passageiros. Ao recusar: remove da lista de solicitações e adiciona ao array de recusados. Requer autenticação.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "caronaID",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID do documento da carona no Firestore"
+          },
+          {
+            "name": "passageiroID",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID do usuário que enviou a solicitação"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ResponderSolicitacaoRequest" },
+              "example": { "aceite": true }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Solicitação aceita ou recusada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessageResponse" },
+                "examples": {
+                  "aceita": { "value": { "message": "Solicitação aceita! Passageiro confirmado." } },
+                  "recusada": { "value": { "message": "Solicitação recusada com sucesso." } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Carona lotada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Não é possível aceitar: Carona lotada." }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Apenas o motorista pode gerenciar solicitações",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Apenas o motorista responsável pode gerenciar solicitações." }
+              }
+            }
+          },
+          "404": {
+            "description": "Carona ou solicitação não encontrada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "carona": { "value": { "message": "Carona não encontrada." } },
+                  "solicitacao": { "value": { "message": "Solicitação deste passageiro não encontrada." } }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Passageiro já confirmado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Este passageiro já está confirmado na carona" }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro ao processar solicitação",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/carona/{id}": {
+      "get": {
+        "tags": ["Caronas"],
+        "summary": "Buscar carona por ID",
+        "description": "Retorna os detalhes completos de uma carona, incluindo informações do motorista e passageiros. Com Authorization opcional: se for o motorista, inclui 'solicitacoes'; se autenticado, inclui 'usuarioEhPassageiro'.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID do documento da carona no Firestore"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dados da carona",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GetCaronaByIdResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Carona não encontrada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Carona não encontrada" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro ao buscar carona",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/caronas/minhasCaronas": {
+      "get": {
+        "tags": ["Caronas"],
+        "summary": "Listar minhas caronas",
+        "description": "Retorna as caronas do usuário autenticado. Se for motorista: lista de caronas com solicitações pendentes e passageiros confirmados. Se for passageiro: caronas solicitadas ou confirmadas com dados do motorista. Requer autenticação.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Lista de caronas como motorista e como passageiro",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "comoMotorista": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "papel": { "type": "string", "example": "motorista" },
+                          "veiculo": { "$ref": "#/components/schemas/VeiculoCaronaResponse" },
+                          "origem": { "type": "object", "description": "Objeto completo da origem" },
+                          "destino": { "type": "object", "description": "Objeto completo do destino" },
+                          "rota": { "type": "string", "description": "Rota formatada (origem → destino)" },
+                          "dtPartida": {},
+                          "dtChegada": {},
+                          "valor": {},
+                          "vagasDisponiveis": { "type": "integer" },
+                          "status": { "type": "string", "enum": ["SOLICITADA", "CONFIRMADA"] },
+                          "solicitacoes": { "type": "array", "description": "Lista de passageiros que solicitaram vaga" },
+                          "passageiros": { "type": "array", "description": "Lista de passageiros confirmados" }
+                        }
+                      }
+                    },
+                    "comoPassageiro": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "papel": { "type": "string", "example": "passageiro" },
+                          "status": { "type": "string", "enum": ["CONFIRMADO", "SOLICITADO"] },
+                          "motorista": { "type": "object", "description": "Dados do motorista" },
+                          "veiculo": { "$ref": "#/components/schemas/VeiculoCaronaResponse" },
+                          "origem": { "type": "object", "description": "Objeto completo da origem" },
+                          "destino": { "type": "object", "description": "Objeto completo do destino" },
+                          "rota": { "type": "string", "description": "Rota formatada (origem → destino)" },
+                          "dtPartida": {},
+                          "dtChegada": {},
+                          "valor": {},
+                          "vagasDisponiveis": { "type": "integer" },
+                          "passageiros": { "type": "array", "description": "Lista de passageiros da carona" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Usuário não autenticado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro ao listar minhas caronas",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/caronas": {
+      "get": {
+        "tags": ["Caronas"],
+        "summary": "Listar caronas disponíveis",
+        "description": "Retorna a lista de caronas abertas com vagas disponíveis.",
+        "responses": {
+          "200": {
+            "description": "Lista de caronas disponíveis (pode ser vazia)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ListCaronaItem" }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro ao buscar caronas disponíveis",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/avaliacao": {
+      "post": {
+        "tags": ["Usuários"],
+        "summary": "Criar avaliação de motorista",
+        "description": "Cria uma avaliação para o motorista de uma carona já realizada. Requer autenticação e que o usuário seja passageiro da carona.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateAvaliacaoRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Avaliação criada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreateAvaliacaoResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Usuário não é passageiro dessa carona",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Usuário não é passageiro dessa carona" }
+              }
+            }
+          },
+          "404": {
+            "description": "Carona não encontrada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/avaliacao/{userId}": {
+      "get": {
+        "tags": ["Usuários"],
+        "summary": "Listar avaliações de um motorista",
+        "description": "Retorna o resumo do motorista e as avaliações recebidas como motorista.",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID do usuário motorista no Firestore"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dados do motorista e suas avaliações",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GetAvaliacoesResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "message": "Usuário não encontrado" }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -474,7 +931,7 @@
       },
       "CreateUserRequest": {
         "type": "object",
-        "required": ["nome", "email", "curso_ocupacao", "dtAniversario"],
+        "required": ["nome", "email", "senha", "curso_ocupacao", "dtAniversario"],
         "properties": {
           "nome": {
             "type": "string",
@@ -486,6 +943,12 @@
             "format": "email",
             "description": "Email do usuário (deve ser único)",
             "example": "maria.silva@aluno.ufop.edu.br"
+          },
+          "senha": {
+            "type": "string",
+            "minLength": 8,
+            "description": "Senha do usuário (mínimo 8 caracteres, 1 maiúscula, 1 número, 1 caractere especial)",
+            "example": "Senha@123"
           },
           "curso_ocupacao": {
             "type": "string",
@@ -560,6 +1023,22 @@
           "message": { "type": "string", "description": "Mensagem de sucesso" }
         }
       },
+      "VeiculoCarona": {
+        "type": "object",
+        "required": ["modelo", "placa"],
+        "properties": {
+          "modelo": { "type": "string", "description": "Modelo do veículo" },
+          "placa": { "type": "string", "description": "Placa do veículo" }
+        }
+      },
+      "VeiculoCaronaResponse": {
+        "type": "object",
+        "properties": {
+          "modelo": { "type": "string", "description": "Modelo do veículo" },
+          "placa": { "type": "string", "description": "Placa do veículo" },
+          "formatado": { "type": "string", "description": "Versão concatenada (modelo - placa)" }
+        }
+      },
       "OrigemCarona": {
         "type": "object",
         "required": ["nomeLocal", "cep", "rua", "numero", "bairro", "cidade", "estado"],
@@ -577,7 +1056,7 @@
         "type": "object",
         "required": ["veiculo", "vagas", "valor", "dtPartida", "dtChegada", "origem"],
         "properties": {
-          "veiculo": { "type": "string", "description": "Descrição do veículo" },
+          "veiculo": { "$ref": "#/components/schemas/VeiculoCarona" },
           "vagas": { "type": "number", "minimum": 1, "description": "Número de vagas" },
           "valor": { "type": "number", "minimum": 0, "description": "Valor por passageiro" },
           "dtPartida": { "type": "string", "format": "date-time", "description": "Data/hora de partida (ISO 8601)" },
@@ -590,6 +1069,177 @@
         "properties": {
           "message": { "type": "string", "example": "Carona criada com sucesso" },
           "id": { "type": "string", "description": "ID do documento da carona no Firestore" }
+        }
+      },
+      "ResponderSolicitacaoRequest": {
+        "type": "object",
+        "required": ["aceite"],
+        "properties": {
+          "aceite": {
+            "type": "boolean",
+            "description": "true para aceitar, false para recusar (adiciona ao array de recusados)"
+          }
+        }
+      },
+      "PatchCaronaStatusRequest": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["INICIADA", "FINALIZADA"],
+            "description": "Novo status da carona"
+          }
+        }
+      },
+      "PatchCaronaStatusResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "description": "Mensagem de sucesso" },
+          "status": { "type": "string", "enum": ["INICIADA", "FINALIZADA"], "description": "Status atualizado" }
+        }
+      },
+      "GetCaronaByIdResponse": {
+        "type": "object",
+        "properties": {
+          "criadoEm": { "type": "string", "format": "date-time", "description": "Data de criação da carona" },
+          "usuarioEhPassageiro": { "type": "boolean", "description": "Presente quando autenticado. true se o usuário é passageiro confirmado da carona" },
+          "motorista": {
+            "type": "object",
+            "properties": {
+              "createdAt": { "type": "string", "format": "date-time", "nullable": true },
+              "nome": { "type": "string" },
+              "notaMedia": { "type": "number" },
+              "fotoUrl": { "type": "string" },
+              "descricao": { "type": "string", "nullable": true },
+              "caronasCont": { "type": "integer", "description": "Quantidade de caronas como motorista" },
+              "perfil": { "type": "string", "description": "Perfil formatado (idade - curso/ocupação)" }
+            }
+          },
+          "veiculo": { "$ref": "#/components/schemas/VeiculoCaronaResponse" },
+          "valor": { "type": "number" },
+          "vagasDisponiveis": { "type": "integer" },
+          "origem": { "$ref": "#/components/schemas/OrigemCarona" },
+          "destino": {
+            "type": "object",
+            "description": "Destino da carona",
+            "additionalProperties": true
+          },
+          "dtPartida": { "type": "string", "format": "date-time" },
+          "dtChegada": { "type": "string", "format": "date-time" },
+          "passageiros": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "nome": { "type": "string" },
+                "fotoUrl": { "type": "string" },
+                "perfil": { "type": "string", "description": "Perfil formatado (idade - curso/ocupação)" }
+              }
+            }
+          },
+          "solicitacoes": {
+            "type": "array",
+            "description": "Presente quando o usuário autenticado é o motorista da carona",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "description": "ID do usuário solicitante" },
+                "nome": { "type": "string" },
+                "fotoUrl": { "type": "string" },
+                "perfil": { "type": "string", "description": "Perfil formatado (idade - curso/ocupação)" }
+              }
+            }
+          }
+        }
+      },
+      "ListCaronaItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "ID da carona" },
+          "criadoEm": { "type": "string", "format": "date-time" },
+          "motorista": {
+            "type": "object",
+            "properties": {
+              "nome": { "type": "string" },
+              "notaMedia": { "type": "number" },
+              "fotoUrl": { "type": "string", "nullable": true }
+            }
+          },
+          "veiculo": { "$ref": "#/components/schemas/VeiculoCaronaResponse" },
+          "valor": { "type": "number" },
+          "vagasDisponiveis": { "type": "integer" },
+          "origem": { "$ref": "#/components/schemas/OrigemCarona" },
+          "destino": {
+            "type": "object",
+            "description": "Destino da carona",
+            "additionalProperties": true
+          },
+          "dtPartida": { "type": "string", "format": "date-time" },
+          "dtChegada": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateAvaliacaoRequest": {
+        "type": "object",
+        "required": ["caronaID", "nota", "comentario"],
+        "properties": {
+          "caronaID": {
+            "type": "string",
+            "description": "ID da carona avaliada"
+          },
+          "nota": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "Nota de 1 a 5"
+          },
+          "comentario": {
+            "type": "string",
+            "description": "Comentário sobre a carona/motorista"
+          }
+        }
+      },
+      "CreateAvaliacaoResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "ID da avaliação criada" },
+          "caronaID": { "type": "string" },
+          "nota": { "type": "integer" },
+          "comentario": { "type": "string" },
+          "userId": { "type": "string", "description": "ID do passageiro que avaliou" },
+          "motoristaId": { "type": "string", "description": "ID do motorista avaliado" },
+          "criadoEm": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "GetAvaliacoesResponse": {
+        "type": "object",
+        "properties": {
+          "usuario": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "fotoUrl": { "type": "string" },
+              "nome": { "type": "string" },
+              "notaMedia": { "type": "number" },
+              "perfil": { "type": "string" },
+              "descricao": { "type": "string" },
+              "createdAt": { "type": "string", "format": "date-time", "nullable": true },
+              "contCaronas": { "type": "integer", "description": "Quantidade de caronas como motorista" }
+            }
+          },
+          "avaliacoes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "nome": { "type": "string" },
+                "fotoUrl": { "type": "string" },
+                "createdAt": { "type": "string", "format": "date-time", "nullable": true },
+                "nota": { "type": "integer" },
+                "comentario": { "type": "string" }
+              }
+            }
+          }
         }
       }
     }

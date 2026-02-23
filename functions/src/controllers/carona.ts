@@ -1,27 +1,29 @@
 import { Request, Response } from "express";
 import * as admin from "firebase-admin";
-import { postCaronaSchema } from "../schemas/caronaSchema";
-
-const db = admin.firestore();
-
+import {
+  postCaronaSchema,
+  patchCaronaStatusSchema,
+  responderSolicitacaoSchema,
+} from "../schemas/caronaSchema";
+import * as logger from "firebase-functions/logger";
 
 export const createCarona = async (req: Request, res: Response) => {
+  const validatedData = await postCaronaSchema.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+
+  const {
+    veiculo,
+    vagas,
+    valor,
+    dtPartida,
+    dtChegada,
+    origem,
+    destino,
+  } = validatedData;
+
   try {
-    const validatedData = await postCaronaSchema.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
-
-    const {
-      veiculo,
-      vagas,
-      valor,
-      dtPartida,
-      dtChegada,
-      origem,
-      destino,
-    } = validatedData;
-
     const partida = new Date(dtPartida);
     const chegada = new Date(dtChegada);
 
@@ -48,18 +50,20 @@ export const createCarona = async (req: Request, res: Response) => {
       motoristaId,
       status: "ABERTA",
       passageiros: [],
+      solicitacoes: [],
+      recusados: [],
     };
 
-    const docRef = await db.collection("caronas").add(caronaData);
+    const docRef = await admin.firestore().collection("caronas").add(caronaData);
 
     return res.status(201).json({
       message: "Carona criada com sucesso",
       id: docRef.id,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    logger.error("Erro ao criar carona", error);
     return res.status(500).json({
       message: "Erro ao criar carona",
-      error: error.message,
     });
   }
 };
@@ -69,20 +73,20 @@ export const getCaronaById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const caronaSnap = await db.collection("caronas").doc(id).get();
+    const caronaSnap = await admin.firestore().collection("caronas").doc(id).get();
 
     if (!caronaSnap.exists) {
       return res.status(404).json({ message: "Carona não encontrada" });
     }
 
     if (!caronaSnap.exists) {
-  return res.status(404).json({ message: "Carona não encontrada" });
-}
+      return res.status(404).json({ message: "Carona não encontrada" });
+    }
 
-const carona = caronaSnap.data()!;
+    const carona = caronaSnap.data()!;
 
-    const motoristaSnap = await db
-      .collection("users")
+    const motoristaSnap = await admin.firestore()
+      .collection("usuarios")
       .doc(carona?.motoristaId)
       .get();
 
@@ -93,7 +97,7 @@ const carona = caronaSnap.data()!;
     const motorista = motoristaSnap.data();
 
 
-    const avaliacoesSnap = await db
+    const avaliacoesSnap = await admin.firestore()
       .collection("avaliacoes")
       .where("motoristaId", "==", carona?.motoristaId)
       .get();
@@ -109,7 +113,7 @@ const carona = caronaSnap.data()!;
     }
 
 
-    const caronasMotoristaSnap = await db
+    const caronasMotoristaSnap = await admin.firestore()
       .collection("caronas")
       .where("motoristaId", "==", carona?.motoristaId)
       .get();
@@ -130,7 +134,7 @@ const carona = caronaSnap.data()!;
 
     if (carona?.passageiros?.length > 0) {
       for (const passageiroId of carona.passageiros) {
-        const userSnap = await db.collection("users").doc(passageiroId).get();
+        const userSnap = await admin.firestore().collection("usuarios").doc(passageiroId).get();
 
         if (userSnap.exists) {
           const user = userSnap.data();
@@ -152,9 +156,36 @@ const carona = caronaSnap.data()!;
       }
     }
 
+    let solicitacoes: Array<{ id: string; nome: string; fotoUrl: string; perfil: string }> | undefined;
+    const userId = (req as any).user?.uid;
+    if (userId && userId === carona?.motoristaId) {
+      const solicitacoesIds = carona?.solicitacoes || [];
+      solicitacoes = [];
+      for (const sid of solicitacoesIds) {
+        const userSnap = await admin.firestore().collection("usuarios").doc(sid).get();
+        if (userSnap.exists) {
+          const u = userSnap.data();
+          let idade = 0;
+          if (u?.dtAniversario) {
+            const nascimento = u.dtAniversario.toDate();
+            idade = new Date().getFullYear() - nascimento.getFullYear();
+          }
+          solicitacoes.push({
+            id: sid,
+            nome: u?.nome || "",
+            fotoUrl: u?.fotoUrl || "",
+            perfil: `${idade} anos, ${u?.curso_ocupacao || ""}`,
+          });
+        }
+      }
+    }
 
-    return res.status(200).json({
+    const passageirosIds = carona?.passageiros || [];
+    const usuarioEhPassageiro = !!(userId && passageirosIds.includes(userId));
+
+    const response: Record<string, unknown> = {
       criadoEm: carona?.criadoEm,
+      ...(userId && { usuarioEhPassageiro }),
       motorista: {
         createdAt: motorista?.createdAt,
         nome: motorista?.nome,
@@ -164,17 +195,21 @@ const carona = caronaSnap.data()!;
         caronasCont,
         perfil: `${idadeMotorista} - ${motorista?.curso_ocupacao}`,
       },
-      veiculo: carona?.veiculo,
+      veiculo: normalizarVeiculo(carona?.veiculo),
       valor: carona?.valor,
-      vagasDisponiveis:
-        carona?.vagas - (carona?.passageiros?.length || 0),
+      vagasDisponiveis: carona?.vagas - (carona?.passageiros?.length || 0),
       origem: carona?.origem,
       destino: carona?.destino,
       dtPartida: carona?.dtPartida,
       dtChegada: carona?.dtChegada,
       passageiros,
-    });
+    };
+    if (solicitacoes !== undefined) {
+      response.solicitacoes = solicitacoes;
+    }
+    return res.status(200).json(response);
   } catch (error) {
+    logger.error("Erro ao buscar carona por ID", error);
     return res.status(500).json({
       message: "Erro ao buscar carona",
     });
@@ -234,6 +269,7 @@ export const solicitarCarona = async (req: Request, res: Response) => {
       .status(200)
       .json({ message: "Solicitação de carona enviada com sucesso!" });
   } catch (error: any) {
+    logger.error("Erro ao solicitar carona", error);
     return res.status(500).json({
       message: "Erro ao solicitar carona",
       error: error.message,
@@ -300,7 +336,7 @@ if (data.motoristaId) {
         id: doc.id,
         criadoEm: data.criadoEm?.toDate(),
         motorista: motoristaData,
-        veiculo: data.veiculo,
+        veiculo: normalizarVeiculo(data.veiculo),
         valor: data.valor,
         vagasDisponiveis: vagasDisponiveis,
         origem: data.origem,
@@ -317,6 +353,7 @@ if (data.motoristaId) {
     return res.status(200).json(caronasFiltradas);
 
   } catch (error: any) {
+    logger.error("Erro ao buscar caronas disponíveis", error);
     return res.status(500).json({
       message: "Erro ao buscar caronas disponíveis",
       error: error.message
@@ -324,67 +361,304 @@ if (data.motoristaId) {
   }
 }
 
-export const responderSolicitacao = async (req: Request, res: Response) => {
-  try {
-    const { caronaID, passageiroID } = req.params;
-    const { aceite } = req.body;
-    const motoristaIdLogado = (req as any).user.uid || (req as any).user.id;
+/**
+ * Normaliza o objeto veículo para o formato esperado nas respostas da API.
+ * @param {unknown} veiculo - Dados do veículo (objeto ou string legada)
+ * @return {{ modelo: string, placa: string, veiculoStr: string }} Objeto com modelo, placa e veiculoStr concatenado
+ */
+function normalizarVeiculo(veiculo: unknown): { modelo: string; placa: string; veiculoStr: string } {
+  let obj: { modelo: string; placa: string };
+  if (veiculo && typeof veiculo === "object" && "modelo" in veiculo && "placa" in veiculo) {
+    obj = veiculo as { modelo: string; placa: string };
+  } else {
+    const str = typeof veiculo === "string" ? veiculo : "";
+    obj = { modelo: str, placa: "" };
+  }
+  const veiculoStr = obj.placa ? `${obj.modelo} - ${obj.placa}` : obj.modelo;
+  return { ...obj, veiculoStr };
+}
 
-    if (typeof aceite !== 'boolean') {
-      return res.status(400).json({ message: "O campo 'aceite' é obrigatório e deve ser booleano."});
+/**
+ * Busca os detalhes do usuário para exibição em listas de caronas.
+ * @param {string} userId - ID do usuário no Firestore
+ * @return {Promise<object|null>} Dados do usuário ou null se não encontrado
+ */
+async function getDetalhesUsuario(userId: string) {
+  const userSnap = await admin.firestore().collection("usuarios").doc(userId).get();
+  if (!userSnap.exists) return null;
+  const u = userSnap.data();
+  let idade = 0;
+  if (u?.dtAniversario) {
+    const nascimento = u.dtAniversario.toDate();
+    idade = new Date().getFullYear() - nascimento.getFullYear();
+  }
+  return {
+    id: userId,
+    nome: u?.nome,
+    fotoUrl: u?.fotoUrl || "",
+    idade,
+    curso_ocupacao: u?.curso_ocupacao,
+    perfil: `${idade} anos, ${u?.curso_ocupacao || ""}`,
+  };
+}
+
+export const getMinhasCaronas = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.uid;
+    if (!userId) {
+      return res.status(401).json({ message: "Usuário não autenticado" });
     }
+
+    const comoMotorista: any[] = [];
+    const comoPassageiro: any[] = [];
+
+    const caronasMotoristaSnap = await admin.firestore()
+      .collection("caronas")
+      .where("motoristaId", "==", userId)
+      .get();
+
+    const motoristaUser = await getDetalhesUsuario(userId);
+
+    for (const doc of caronasMotoristaSnap.docs) {
+      const data = doc.data();
+      const passageirosIds = data.passageiros || [];
+      const solicitacoesIds = data.solicitacoes || [];
+      const vagasTotal = data.vagas || 0;
+      const vagasDisponiveis = vagasTotal - passageirosIds.length;
+
+      const status = data.status || "ABERTA";
+
+      const solicitacoes = [];
+      for (const sid of solicitacoesIds) {
+        const detalhe = await getDetalhesUsuario(sid);
+        if (detalhe) solicitacoes.push(detalhe);
+      }
+
+      const passageiros = [];
+      for (const pid of passageirosIds) {
+        const detalhe = await getDetalhesUsuario(pid);
+        if (detalhe) passageiros.push({ nome: detalhe.nome, fotoUrl: detalhe.fotoUrl, perfil: detalhe.perfil });
+      }
+
+      const origemObj = data.origem && typeof data.origem === "object" ? data.origem : { nomeLocal: data.origem };
+      const destinoObj = data.destino && typeof data.destino === "object" ? data.destino : { nomeLocal: data.destino };
+      const rotaStr = `${origemObj?.nomeLocal || origemObj} → ${destinoObj?.nomeLocal || destinoObj}`;
+
+      comoMotorista.push({
+        id: doc.id,
+        eMotorista: true,
+        motorista: motoristaUser ? { nome: motoristaUser.nome, fotoUrl: motoristaUser.fotoUrl } : null,
+        veiculo: normalizarVeiculo(data.veiculo),
+        origem: origemObj,
+        destino: destinoObj,
+        rota: rotaStr,
+        dtPartida: data.dtPartida?.toDate?.() || data.dtPartida,
+        dtChegada: data.dtChegada?.toDate?.() || data.dtChegada,
+        valor: data.valor,
+        vagasDisponiveis,
+        vagasTotal,
+        status,
+        solicitacoes,
+        passageiros,
+      });
+    }
+
+    const caronasPassageiroSnap = await admin.firestore()
+      .collection("caronas")
+      .where("passageiros", "array-contains", userId)
+      .get();
+
+    const caronasSolicitanteSnap = await admin.firestore()
+      .collection("caronas")
+      .where("solicitacoes", "array-contains", userId)
+      .get();
+
+    const idsJaIncluidos = new Set<string>();
+
+    const processarComoPassageiro = async (doc: admin.firestore.QueryDocumentSnapshot) => {
+      if (idsJaIncluidos.has(doc.id)) return;
+      idsJaIncluidos.add(doc.id);
+
+      const data = doc.data();
+      const motoristaId = data.motoristaId;
+      const motorista = await getDetalhesUsuario(motoristaId);
+      if (!motorista) return;
+
+      const passageirosIds = data.passageiros || [];
+      const vagasTotal = data.vagas || 0;
+      const vagasDisponiveis = vagasTotal - passageirosIds.length;
+
+      const statusCarona = data.status || "ABERTA";
+      const souMotorista = data.motoristaId === userId;
+      const souConfirmado = passageirosIds.includes(userId);
+      const status = souMotorista
+        ? statusCarona
+        : (statusCarona === "ABERTA"
+          ? (souConfirmado ? "CONFIRMADO" : "SOLICITADO")
+          : statusCarona);
+
+      const passageiros = [];
+      for (const pid of passageirosIds) {
+        const detalhe = await getDetalhesUsuario(pid);
+        if (detalhe) passageiros.push({ nome: detalhe.nome, fotoUrl: detalhe.fotoUrl, perfil: detalhe.perfil });
+      }
+
+      const origemObj = data.origem && typeof data.origem === "object" ? data.origem : { nomeLocal: data.origem };
+      const destinoObj = data.destino && typeof data.destino === "object" ? data.destino : { nomeLocal: data.destino };
+      const rotaStr = `${origemObj?.nomeLocal || origemObj} → ${destinoObj?.nomeLocal || destinoObj}`;
+
+      comoPassageiro.push({
+        id: doc.id,
+        eMotorista: false,
+        status,
+        motorista: {
+          nome: motorista.nome,
+          fotoUrl: motorista.fotoUrl,
+          perfil: motorista.perfil,
+        },
+        veiculo: normalizarVeiculo(data.veiculo),
+        origem: origemObj,
+        destino: destinoObj,
+        rota: rotaStr,
+        dtPartida: data.dtPartida?.toDate?.() || data.dtPartida,
+        dtChegada: data.dtChegada?.toDate?.() || data.dtChegada,
+        valor: data.valor,
+        vagasDisponiveis,
+        passageiros,
+      });
+    };
+
+    for (const doc of caronasPassageiroSnap.docs) {
+      await processarComoPassageiro(doc);
+    }
+    for (const doc of caronasSolicitanteSnap.docs) {
+      await processarComoPassageiro(doc);
+    }
+
+    return res.status(200).json({
+      comoMotorista,
+      comoPassageiro,
+    });
+  } catch (error: any) {
+    logger.error("Erro ao listar minhas caronas", error);
+    return res.status(500).json({
+      message: "Erro ao listar minhas caronas",
+      error: error.message,
+    });
+  }
+};
+
+export const alterarStatusCarona = async (req: Request, res: Response) => {
+  const { status } = await patchCaronaStatusSchema.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+  const { caronaID } = req.params;
+  const motoristaId = (req as any).user?.uid;
+
+  try {
 
     const caronaRef = admin.firestore().collection("caronas").doc(caronaID);
     const caronaDoc = await caronaRef.get();
 
     if (!caronaDoc.exists) {
-      return res.status(404).json({ message: "Carona não econtrada."});
+      return res.status(404).json({ message: "Carona não encontrada" });
+    }
+
+    const data = caronaDoc.data();
+    if (data?.motoristaId !== motoristaId) {
+      return res.status(403).json({
+        message: "Apenas o motorista responsável pode alterar o status da carona",
+      });
+    }
+
+    const statusAtual = data?.status || "ABERTA";
+    if (status === "INICIADA" && statusAtual !== "ABERTA") {
+      return res.status(400).json({
+        message: "Só é possível iniciar uma carona com status ABERTA",
+      });
+    }
+    if (status === "FINALIZADA" && statusAtual !== "INICIADA") {
+      return res.status(400).json({
+        message: "Só é possível finalizar uma carona com status INICIADA",
+      });
+    }
+
+    await caronaRef.update({
+      status,
+    });
+
+    return res.status(200).json({
+      message: `Carona ${status === "INICIADA" ? "iniciada" : "finalizada"} com sucesso`,
+      status,
+    });
+  } catch (error: unknown) {
+    logger.error("Erro ao alterar status da carona", error);
+    return res.status(500).json({
+      message: "Erro ao alterar status da carona",
+    });
+  }
+};
+
+export const responderSolicitacao = async (req: Request, res: Response) => {
+  const { aceite } = await responderSolicitacaoSchema.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+  const { caronaID, passageiroID } = req.params;
+  const motoristaIdLogado = (req as any).user?.uid || (req as any).user?.id;
+
+  try {
+    const caronaRef = admin.firestore().collection("caronas").doc(caronaID);
+    const caronaDoc = await caronaRef.get();
+
+    if (!caronaDoc.exists) {
+      return res.status(404).json({ message: "Carona não encontrada." });
     }
 
     const data = caronaDoc.data();
 
-    if (data?.motoristaId !== motoristaIdLogado){
-      return res.status(403).json({ message: "Apenas o motorista responsável pode gerenciar solicitações."});
+    if (data?.motoristaId !== motoristaIdLogado) {
+      return res.status(403).json({ message: "Apenas o motorista responsável pode gerenciar solicitações." });
     }
 
     const solicitacoes = data?.solicitacoes || [];
-    if (!solicitacoes.includes(passageiroID)){
-      return res.status(404).json({ message: "Solicitação deste passageiro não encontrada."});
+    if (!solicitacoes.includes(passageiroID)) {
+      return res.status(404).json({ message: "Solicitação deste passageiro não encontrada." });
     }
 
     if (aceite === false) {
       await caronaRef.update({
-        solicitacoes: admin.firestore.FieldValue.arrayRemove(passageiroID)});
-        return res.status(200).json({ message: "Solciitação recusada com sucesso."});
-    
-    }
-
-    else {
+        solicitacoes: admin.firestore.FieldValue.arrayRemove(passageiroID),
+        recusados: admin.firestore.FieldValue.arrayUnion(passageiroID),
+      });
+      return res.status(200).json({ message: "Solicitação recusada com sucesso." });
+    } else {
       const capacidadeTotal = data?.vagas || 0;
       const passageirosConfirmados = data?.passageiros || [];
       const vagasDisponiveis = capacidadeTotal - passageirosConfirmados.length;
 
       if (vagasDisponiveis <= 0) {
-        return res.status(400).json({ message: "Não é possível aceitar: Carona lotada."});
+        return res.status(400).json({ message: "Não é possível aceitar: Carona lotada." });
       }
 
-      if (passageirosConfirmados.includes(passageiroID)){
-        return res.status(409).json({ message: "Este passageiro já está confirmado na carona"});
+      if (passageirosConfirmados.includes(passageiroID)) {
+        return res.status(409).json({ message: "Este passageiro já está confirmado na carona" });
       }
-      
+
       await caronaRef.update({
         solicitacoes: admin.firestore.FieldValue.arrayRemove(passageiroID),
         passageiros: admin.firestore.FieldValue.arrayUnion(passageiroID)
       });
 
-      return res.status(200).json({ message: "SOlicitação aceita! Passageiro confirmado."});
+      return res.status(200).json({ message: "Solicitação aceita! Passageiro confirmado." });
     }
-  } catch (error: any){
+  } catch (error: any) {
+    logger.error("Erro ao processar solicitação de carona", error);
     return res.status(500).json({
       message: "Erro ao processar solicitação de carona",
-      error: error.message
-      
-       });
+      error: error.message,
+    });
   }
 };
 

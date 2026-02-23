@@ -35,7 +35,7 @@ const mockAwaitForUserCreationOnFirestore = async (
   return await new Promise<void>((resolve) => {
     const unsubscribe = admin
       .firestore()
-      .collection("users")
+      .collection("usuarios")
       .doc(uid)
       .onSnapshot((snapshot) => {
         if (snapshot.exists) {

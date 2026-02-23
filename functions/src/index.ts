@@ -10,16 +10,33 @@ import { initializeApp, getApps } from "firebase/app";
 
 import { onError } from "./middlewares/error";
 import { migrationsUp } from "./controllers/migrations-controller";
-import { createUser, getAuthenticatedUser, uploadUserProfile, updateUserData } from "./controllers/users";
+import {
+  createUser,
+  getAuthenticatedUser,
+  uploadUserProfile,
+  updateUserData,
+} from "./controllers/users";
 import { catchAsyncErrors } from "./middlewares/catch-async-errors";
-import { authenticate } from "./middlewares/authenticate";
+import { authenticate, optionalAuthenticate } from "./middlewares/authenticate";
 import { setGlobalOptions } from "firebase-functions/v2/options";
+ 
+import {
+  getCaronaById,
+  createCarona,
+  solicitarCarona,
+  getAllCaronas,
+  getMinhasCaronas,
+  alterarStatusCarona,
+  responderSolicitacao,
+} from "./controllers/carona";
 import { validateSchema } from "./middlewares/validate-schema";
 import { criarAvaliacaoSchema } from "./schemas/avaliacaoSchema";
-import { criarAvaliacao, getAvaliacoes } from "./controllers/avaliacao-controller";
-import { createCarona, getCaronaById, solicitarCarona, getAllCaronas } from "./controllers/carona";
- 
-admin.initializeApp();
+import {
+  criarAvaliacao,
+  getAvaliacoes,
+} from "./controllers/avaliacao-controller";
+
+ admin.initializeApp();
 
 if (process.env.NODE_ENV === "test") {
   process.env.FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099";
@@ -50,30 +67,41 @@ setGlobalOptions({ maxInstances: 10, region: "southamerica-east1" });
 const app = express();
 
 app.use(cors({ origin: true }));
-app.use(express.json({ limit: "10mb"}));
+app.use(express.json({ limit: "10mb" }));
 app.use("/docs/", serve, setup(swagger));
 
-
 app.post("/migrations-up", migrationsUp);
- app.post("/users", catchAsyncErrors(createUser));
-app.post("/avaliacao", authenticate, validateSchema(criarAvaliacaoSchema), criarAvaliacao);
+app.post("/users", catchAsyncErrors(createUser));
+app.post(
+  "/avaliacao",
+  authenticate,
+  validateSchema(criarAvaliacaoSchema),
+  criarAvaliacao
+);
 
-app.get("/avaliacao/:userId", getAvaliacoes);
-app.get("/carona/:id", getCaronaById);
- 
+app.get("/avaliacao/:userId", catchAsyncErrors(getAvaliacoes));
+app.get("/carona/:id", optionalAuthenticate, catchAsyncErrors(getCaronaById));
 
-app.get("/caronas", getAllCaronas);
+app.get("/caronas", catchAsyncErrors(getAllCaronas));
+app.get("/caronas/minhasCaronas", authenticate, catchAsyncErrors(getMinhasCaronas));
 
 app.get("/users/me", authenticate, catchAsyncErrors(getAuthenticatedUser));
 app.post("/users", catchAsyncErrors(createUser));
 app.post("/users/perfil", authenticate, catchAsyncErrors(uploadUserProfile));
 app.put("/users", authenticate, catchAsyncErrors(updateUserData));
 
- 
 app.post("/carona", authenticate, catchAsyncErrors(createCarona));
-app.post("/carona/solicitar/:caronaID",authenticate, solicitarCarona);
- 
+app.post("/carona/solicitar/:caronaID", authenticate, catchAsyncErrors(solicitarCarona));
+app.patch("/carona/:caronaID/status", authenticate, catchAsyncErrors(alterarStatusCarona));
+app.patch(
+  "/carona/:caronaID/solicitacao/:passageiroID",
+  authenticate,
+  catchAsyncErrors(responderSolicitacao)
+);
+
 app.use(onError);
 
-export const api = onRequest(app);
-export { app };
+export const api = onRequest(
+  { region: "southamerica-east1", maxInstances: 10 },
+  app,
+);

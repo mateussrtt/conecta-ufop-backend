@@ -1,7 +1,12 @@
 import * as yup from "yup";
 
 export const postCaronaSchema = yup.object().shape({
-  veiculo: yup.string().required("O campo 'veiculo' é obrigatório"),
+  veiculo: yup
+    .object({
+      modelo: yup.string().required("O campo 'modelo' é obrigatório"),
+      placa: yup.string().required("O campo 'placa' é obrigatório"),
+    })
+    .required("O campo 'veiculo' é obrigatório"),
 
   vagas: yup
     .number()
@@ -40,7 +45,20 @@ export const postCaronaSchema = yup.object().shape({
       numero: yup.number().required("O campo 'numero' é obrigatório"),
       bairro: yup.string().required("O campo 'bairro' é obrigatório"),
       cidade: yup.string().required("O campo 'cidade' é obrigatório"),
-      estado: yup.string().required("O campo 'estado' é obrigatório"),
-    })
-    .required("O campo 'destino' é obrigatório"),
+      estado: yup.string()    .required("O campo 'estado' é obrigatório"),
+  })
+  .required("O campo 'destino' é obrigatório"),
+});
+
+export const responderSolicitacaoSchema = yup.object({
+  aceite: yup
+    .boolean()
+    .required("O campo 'aceite' é obrigatório e deve ser booleano"),
+});
+
+export const patchCaronaStatusSchema = yup.object({
+  status: yup
+    .string()
+    .oneOf(["INICIADA", "FINALIZADA"], "Status deve ser INICIADA ou FINALIZADA")
+    .required("O campo 'status' é obrigatório"),
 });

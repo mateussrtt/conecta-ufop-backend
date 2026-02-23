@@ -31,3 +31,23 @@ export const authenticate = async (
     return;
   }
 };
+
+export const optionalAuthenticate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return next();
+  }
+  try {
+    const idToken = authHeader.split("Bearer ")[1];
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    (req as any).user = { uid: decodedToken.uid };
+  } catch {
+    res.status(401).json({ message: "Token inválido" });
+    return;
+  }
+  next();
+};

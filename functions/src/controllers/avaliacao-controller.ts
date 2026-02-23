@@ -1,14 +1,13 @@
 import { Request, Response } from "express";
 import * as admin from "firebase-admin";
-
-const db = admin.firestore();
+import * as logger from "firebase-functions/logger";
 
 export const criarAvaliacao = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.uid;
     const { caronaID, nota, comentario } = req.body;
 
-    const caronaRef = db.collection("caronas").doc(caronaID);
+    const caronaRef = admin.firestore().collection("caronas").doc(caronaID);
     const caronaSnap = await caronaRef.get();
 
     if (!caronaSnap.exists) {
@@ -32,14 +31,14 @@ export const criarAvaliacao = async (req: Request, res: Response) => {
       criadoEm: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    const ref = await db.collection("avaliacoes").add(avaliacao);
+    const ref = await admin.firestore().collection("avaliacoes").add(avaliacao);
 
     return res.status(201).json({
       id: ref.id,
       ...avaliacao,
     });
   } catch (error) {
-    console.error(error);
+    logger.error("Erro ao criar avaliação", error);
     return res.status(500).json({ message: "Erro interno do servidor" });
   }
 };
@@ -48,7 +47,7 @@ export const getAvaliacoes = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
 
-    const userRef = db.collection("users").doc(userId);
+    const userRef = admin.firestore().collection("usuarios").doc(userId);
     const userSnap = await userRef.get();
 
     if (!userSnap.exists) {
@@ -57,7 +56,7 @@ export const getAvaliacoes = async (req: Request, res: Response) => {
 
     const userData = userSnap.data();
 
-    const avaliacoesSnap = await db
+    const avaliacoesSnap = await admin.firestore()
       .collection("avaliacoes")
       .where("motoristaId", "==", userId)
       .get();
@@ -69,8 +68,8 @@ export const getAvaliacoes = async (req: Request, res: Response) => {
       const data = doc.data();
       somaNotas += data.nota;
 
-      const avaliadorSnap = await db
-        .collection("users")
+      const avaliadorSnap = await admin.firestore()
+        .collection("usuarios")
         .doc(data.userId)
         .get();
 
@@ -96,7 +95,7 @@ export const getAvaliacoes = async (req: Request, res: Response) => {
       idade = hoje.getFullYear() - nascimento.getFullYear();
     }
 
-    const caronasSnap = await db
+    const caronasSnap = await admin.firestore()
       .collection("caronas")
       .where("motoristaId", "==", userId)
       .get();
@@ -115,7 +114,7 @@ export const getAvaliacoes = async (req: Request, res: Response) => {
       avaliacoes,
     });
   } catch (error) {
-    console.error(error);
+    logger.error("Erro ao buscar avaliações", error);
     return res.status(500).json({ message: "Erro interno do servidor" });
   }
 };
