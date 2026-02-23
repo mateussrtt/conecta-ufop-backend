@@ -14,12 +14,10 @@ import { createUser, getAuthenticatedUser, uploadUserProfile, updateUserData } f
 import { catchAsyncErrors } from "./middlewares/catch-async-errors";
 import { authenticate } from "./middlewares/authenticate";
 import { setGlobalOptions } from "firebase-functions/v2/options";
- import { createCarona, getCaronaById } from "./controllers/carona";
 import { validateSchema } from "./middlewares/validate-schema";
 import { criarAvaliacaoSchema } from "./schemas/avaliacaoSchema";
 import { criarAvaliacao, getAvaliacoes } from "./controllers/avaliacao-controller";
-
- import { createCarona, solicitarCarona, getAllCaronas } from "./controllers/carona";
+import { createCarona, getCaronaById, solicitarCarona, getAllCaronas } from "./controllers/carona";
  
 admin.initializeApp();
 
