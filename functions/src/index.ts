@@ -8,6 +8,10 @@ import { onRequest } from "firebase-functions/v2/https";
 
 import { initializeApp, getApps } from "firebase/app";
 
+admin.initializeApp({ 
+  projectId: "conecta-ufop",
+});
+
 import { onError } from "./middlewares/error";
 import { migrationsUp } from "./controllers/migrations-controller";
 import {
@@ -105,3 +109,5 @@ export const api = onRequest(
   { region: "southamerica-east1", maxInstances: 10 },
   app,
 );
+
+export { app };
