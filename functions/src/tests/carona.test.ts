@@ -143,7 +143,7 @@ describe("Controller de Caronas", () => {
     });
 
     it("deve retornar carona com detalhes do motorista", async () => {
-      const { uid, jwt } = await mockCreateUser();
+      const { uid } = await mockCreateUser();
       await admin.firestore().collection("usuarios").doc(uid).set(createUsuarioDoc(uid));
 
       const caronaRef = await admin.firestore().collection("caronas").add({
@@ -229,6 +229,423 @@ describe("Controller de Caronas", () => {
       expect(response.body).toHaveProperty("comoPassageiro");
       expect(response.body.comoMotorista).toEqual([]);
       expect(response.body.comoPassageiro).toEqual([]);
+    });
+
+    it("deve listar caronas como motorista", async () => {
+      const { uid, jwt } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(uid).set(createUsuarioDoc(uid));
+
+      await admin.firestore().collection("caronas").add({
+        motoristaId: uid,
+        status: "ABERTA",
+        vagas: 3,
+        valor: 15,
+        origem: { nomeLocal: "UFOP" },
+        destino: { nomeLocal: "Rodoviária" },
+        dtPartida: admin.firestore.Timestamp.fromDate(new Date()),
+        dtChegada: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 2 * 60 * 60 * 1000)),
+        criadoEm: admin.firestore.Timestamp.now(),
+        passageiros: [],
+        solicitacoes: [],
+        veiculo: { modelo: "Fiat Uno", placa: "ABC-1234" },
+      });
+
+      const response = await request
+        .get("/caronas/minhasCaronas")
+        .set(authHeader(jwt!));
+
+      expect(response.status).toBe(200);
+      expect(response.body.comoMotorista.length).toBe(1);
+      expect(response.body.comoMotorista[0]).toHaveProperty("eMotorista", true);
+    });
+  });
+
+  describe("POST /carona/solicitar/:caronaID - solicitarCarona", () => {
+    it("deve retornar 401 sem autenticação", async () => {
+      const response = await request.post("/carona/solicitar/carona-id-qualquer");
+      expect(response.status).toBe(401);
+    });
+
+    it("deve retornar 404 para carona inexistente", async () => {
+      const { uid, jwt } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(uid).set(createUsuarioDoc(uid));
+
+      const response = await request
+        .post("/carona/solicitar/doc-inexistente")
+        .set(authHeader(jwt!));
+
+      expect(response.status).toBe(404);
+      expect(response.body.message).toBe("Carona não encontrada");
+    });
+
+    it("deve retornar 400 quando motorista tenta solicitar própria carona", async () => {
+      const { uid, jwt } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(uid).set(createUsuarioDoc(uid));
+
+      const caronaRef = await admin.firestore().collection("caronas").add({
+        motoristaId: uid,
+        status: "ABERTA",
+        vagas: 3,
+        valor: 15,
+        origem: { nomeLocal: "UFOP" },
+        destino: { nomeLocal: "Rodoviária" },
+        dtPartida: admin.firestore.Timestamp.now(),
+        dtChegada: admin.firestore.Timestamp.now(),
+        passageiros: [],
+        solicitacoes: [],
+        veiculo: { modelo: "Fiat", placa: "ABC" },
+      });
+
+      const response = await request
+        .post(`/carona/solicitar/${caronaRef.id}`)
+        .set(authHeader(jwt!));
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe("O motorista não pode solicitar a própria carona");
+    });
+
+    it("deve enviar solicitação com sucesso", async () => {
+      const { uid: motoristaUid } = await mockCreateUser();
+      const { uid: passageiroUid, jwt } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(motoristaUid).set(createUsuarioDoc(motoristaUid));
+      await admin.firestore().collection("usuarios").doc(passageiroUid).set(createUsuarioDoc(passageiroUid));
+
+      const caronaRef = await admin.firestore().collection("caronas").add({
+        motoristaId: motoristaUid,
+        status: "ABERTA",
+        vagas: 3,
+        valor: 15,
+        origem: { nomeLocal: "UFOP" },
+        destino: { nomeLocal: "Rodoviária" },
+        dtPartida: admin.firestore.Timestamp.now(),
+        dtChegada: admin.firestore.Timestamp.now(),
+        passageiros: [],
+        solicitacoes: [],
+        veiculo: { modelo: "Fiat", placa: "ABC" },
+      });
+
+      const response = await request
+        .post(`/carona/solicitar/${caronaRef.id}`)
+        .set(authHeader(jwt!));
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe("Solicitação de carona enviada com sucesso!");
+
+      const doc = await caronaRef.get();
+      const data = doc.data();
+      expect(data?.solicitacoes).toContain(passageiroUid);
+    });
+
+    it("deve retornar 409 ao solicitar novamente (já solicitou)", async () => {
+      const { uid: motoristaUid } = await mockCreateUser();
+      const { uid: passageiroUid, jwt } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(motoristaUid).set(createUsuarioDoc(motoristaUid));
+      await admin.firestore().collection("usuarios").doc(passageiroUid).set(createUsuarioDoc(passageiroUid));
+
+      const caronaRef = await admin.firestore().collection("caronas").add({
+        motoristaId: motoristaUid,
+        status: "ABERTA",
+        vagas: 3,
+        valor: 15,
+        origem: { nomeLocal: "UFOP" },
+        destino: { nomeLocal: "Rodoviária" },
+        dtPartida: admin.firestore.Timestamp.now(),
+        dtChegada: admin.firestore.Timestamp.now(),
+        passageiros: [],
+        solicitacoes: [passageiroUid],
+        veiculo: { modelo: "Fiat", placa: "ABC" },
+      });
+
+      const response = await request
+        .post(`/carona/solicitar/${caronaRef.id}`)
+        .set(authHeader(jwt!));
+
+      expect(response.status).toBe(409);
+      expect(response.body.message).toContain("já enviou uma solicitação");
+    });
+  });
+
+  describe("PATCH /carona/:caronaID/status - alterarStatusCarona", () => {
+    it("deve retornar 401 sem autenticação", async () => {
+      const response = await request
+        .patch("/carona/carona-id/status")
+        .send({ status: "INICIADA" });
+      expect(response.status).toBe(401);
+    });
+
+    it("deve retornar 404 para carona inexistente", async () => {
+      const { uid, jwt } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(uid).set(createUsuarioDoc(uid));
+
+      const response = await request
+        .patch("/carona/doc-inexistente/status")
+        .set(authHeader(jwt!))
+        .send({ status: "INICIADA" });
+
+      expect(response.status).toBe(404);
+    });
+
+    it("deve retornar 403 quando não é o motorista", async () => {
+      const { uid: motoristaUid } = await mockCreateUser();
+      const { uid: outroUid, jwt } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(motoristaUid).set(createUsuarioDoc(motoristaUid));
+      await admin.firestore().collection("usuarios").doc(outroUid).set(createUsuarioDoc(outroUid));
+
+      const caronaRef = await admin.firestore().collection("caronas").add({
+        motoristaId: motoristaUid,
+        status: "ABERTA",
+        vagas: 3,
+        valor: 15,
+        origem: { nomeLocal: "UFOP" },
+        destino: { nomeLocal: "Rodoviária" },
+        dtPartida: admin.firestore.Timestamp.now(),
+        dtChegada: admin.firestore.Timestamp.now(),
+        passageiros: [],
+        solicitacoes: [],
+        veiculo: { modelo: "Fiat", placa: "ABC" },
+      });
+
+      const response = await request
+        .patch(`/carona/${caronaRef.id}/status`)
+        .set(authHeader(jwt!))
+        .send({ status: "INICIADA" });
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toContain("Apenas o motorista responsável");
+    });
+
+    it("deve alterar status de ABERTA para INICIADA", async () => {
+      const { uid, jwt } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(uid).set(createUsuarioDoc(uid));
+
+      const caronaRef = await admin.firestore().collection("caronas").add({
+        motoristaId: uid,
+        status: "ABERTA",
+        vagas: 3,
+        valor: 15,
+        origem: { nomeLocal: "UFOP" },
+        destino: { nomeLocal: "Rodoviária" },
+        dtPartida: admin.firestore.Timestamp.now(),
+        dtChegada: admin.firestore.Timestamp.now(),
+        passageiros: [],
+        solicitacoes: [],
+        veiculo: { modelo: "Fiat", placa: "ABC" },
+      });
+
+      const response = await request
+        .patch(`/carona/${caronaRef.id}/status`)
+        .set(authHeader(jwt!))
+        .send({ status: "INICIADA" });
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe("INICIADA");
+
+      const doc = await caronaRef.get();
+      expect(doc.data()?.status).toBe("INICIADA");
+    });
+
+    it("deve retornar 400 ao tentar INICIADA quando status não é ABERTA", async () => {
+      const { uid, jwt } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(uid).set(createUsuarioDoc(uid));
+
+      const caronaRef = await admin.firestore().collection("caronas").add({
+        motoristaId: uid,
+        status: "INICIADA",
+        vagas: 3,
+        valor: 15,
+        origem: { nomeLocal: "UFOP" },
+        destino: { nomeLocal: "Rodoviária" },
+        dtPartida: admin.firestore.Timestamp.now(),
+        dtChegada: admin.firestore.Timestamp.now(),
+        passageiros: [],
+        solicitacoes: [],
+        veiculo: { modelo: "Fiat", placa: "ABC" },
+      });
+
+      const response = await request
+        .patch(`/carona/${caronaRef.id}/status`)
+        .set(authHeader(jwt!))
+        .send({ status: "INICIADA" });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain("ABERTA");
+    });
+
+    it("deve alterar status de INICIADA para FINALIZADA", async () => {
+      const { uid, jwt } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(uid).set(createUsuarioDoc(uid));
+
+      const caronaRef = await admin.firestore().collection("caronas").add({
+        motoristaId: uid,
+        status: "INICIADA",
+        vagas: 3,
+        valor: 15,
+        origem: { nomeLocal: "UFOP" },
+        destino: { nomeLocal: "Rodoviária" },
+        dtPartida: admin.firestore.Timestamp.now(),
+        dtChegada: admin.firestore.Timestamp.now(),
+        passageiros: [],
+        solicitacoes: [],
+        veiculo: { modelo: "Fiat", placa: "ABC" },
+      });
+
+      const response = await request
+        .patch(`/carona/${caronaRef.id}/status`)
+        .set(authHeader(jwt!))
+        .send({ status: "FINALIZADA" });
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe("FINALIZADA");
+    });
+  });
+
+  describe("PATCH /carona/:caronaID/solicitacao/:passageiroID - responderSolicitacao", () => {
+    it("deve retornar 401 sem autenticação", async () => {
+      const response = await request
+        .patch("/carona/carona-id/solicitacao/passageiro-id")
+        .send({ aceite: true });
+      expect(response.status).toBe(401);
+    });
+
+    it("deve retornar 404 para carona inexistente", async () => {
+      const { uid, jwt } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(uid).set(createUsuarioDoc(uid));
+
+      const response = await request
+        .patch("/carona/doc-inexistente/solicitacao/passageiro-id")
+        .set(authHeader(jwt!))
+        .send({ aceite: true });
+
+      expect(response.status).toBe(404);
+    });
+
+    it("deve retornar 403 quando não é o motorista", async () => {
+      const { uid: motoristaUid } = await mockCreateUser();
+      const { uid: passageiroUid } = await mockCreateUser();
+      const { uid: outroUid, jwt } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(motoristaUid).set(createUsuarioDoc(motoristaUid));
+      await admin.firestore().collection("usuarios").doc(passageiroUid).set(createUsuarioDoc(passageiroUid));
+      await admin.firestore().collection("usuarios").doc(outroUid).set(createUsuarioDoc(outroUid));
+
+      const caronaRef = await admin.firestore().collection("caronas").add({
+        motoristaId: motoristaUid,
+        status: "ABERTA",
+        vagas: 3,
+        valor: 15,
+        origem: { nomeLocal: "UFOP" },
+        destino: { nomeLocal: "Rodoviária" },
+        dtPartida: admin.firestore.Timestamp.now(),
+        dtChegada: admin.firestore.Timestamp.now(),
+        passageiros: [],
+        solicitacoes: [passageiroUid],
+        veiculo: { modelo: "Fiat", placa: "ABC" },
+      });
+
+      const response = await request
+        .patch(`/carona/${caronaRef.id}/solicitacao/${passageiroUid}`)
+        .set(authHeader(jwt!))
+        .send({ aceite: true });
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toContain("Apenas o motorista responsável");
+    });
+
+    it("deve aceitar solicitação com sucesso", async () => {
+      const { uid: motoristaUid, jwt } = await mockCreateUser();
+      const { uid: passageiroUid } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(motoristaUid).set(createUsuarioDoc(motoristaUid));
+      await admin.firestore().collection("usuarios").doc(passageiroUid).set(createUsuarioDoc(passageiroUid));
+
+      const caronaRef = await admin.firestore().collection("caronas").add({
+        motoristaId: motoristaUid,
+        status: "ABERTA",
+        vagas: 3,
+        valor: 15,
+        origem: { nomeLocal: "UFOP" },
+        destino: { nomeLocal: "Rodoviária" },
+        dtPartida: admin.firestore.Timestamp.now(),
+        dtChegada: admin.firestore.Timestamp.now(),
+        passageiros: [],
+        solicitacoes: [passageiroUid],
+        veiculo: { modelo: "Fiat", placa: "ABC" },
+      });
+
+      const response = await request
+        .patch(`/carona/${caronaRef.id}/solicitacao/${passageiroUid}`)
+        .set(authHeader(jwt!))
+        .send({ aceite: true });
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toContain("Passageiro confirmado");
+
+      const doc = await caronaRef.get();
+      const data = doc.data();
+      expect(data?.passageiros).toContain(passageiroUid);
+      expect(data?.solicitacoes).not.toContain(passageiroUid);
+    });
+
+    it("deve recusar solicitação com sucesso", async () => {
+      const { uid: motoristaUid, jwt } = await mockCreateUser();
+      const { uid: passageiroUid } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(motoristaUid).set(createUsuarioDoc(motoristaUid));
+      await admin.firestore().collection("usuarios").doc(passageiroUid).set(createUsuarioDoc(passageiroUid));
+
+      const caronaRef = await admin.firestore().collection("caronas").add({
+        motoristaId: motoristaUid,
+        status: "ABERTA",
+        vagas: 3,
+        valor: 15,
+        origem: { nomeLocal: "UFOP" },
+        destino: { nomeLocal: "Rodoviária" },
+        dtPartida: admin.firestore.Timestamp.now(),
+        dtChegada: admin.firestore.Timestamp.now(),
+        passageiros: [],
+        solicitacoes: [passageiroUid],
+        recusados: [],
+        veiculo: { modelo: "Fiat", placa: "ABC" },
+      });
+
+      const response = await request
+        .patch(`/carona/${caronaRef.id}/solicitacao/${passageiroUid}`)
+        .set(authHeader(jwt!))
+        .send({ aceite: false });
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toContain("recusada");
+
+      const doc = await caronaRef.get();
+      const data = doc.data();
+      expect(data?.solicitacoes).not.toContain(passageiroUid);
+      expect(data?.recusados).toContain(passageiroUid);
+    });
+
+    it("deve retornar 404 quando solicitação do passageiro não existe", async () => {
+      const { uid: motoristaUid, jwt } = await mockCreateUser();
+      const { uid: passageiroUid } = await mockCreateUser();
+      await admin.firestore().collection("usuarios").doc(motoristaUid).set(createUsuarioDoc(motoristaUid));
+      await admin.firestore().collection("usuarios").doc(passageiroUid).set(createUsuarioDoc(passageiroUid));
+
+      const caronaRef = await admin.firestore().collection("caronas").add({
+        motoristaId: motoristaUid,
+        status: "ABERTA",
+        vagas: 3,
+        valor: 15,
+        origem: { nomeLocal: "UFOP" },
+        destino: { nomeLocal: "Rodoviária" },
+        dtPartida: admin.firestore.Timestamp.now(),
+        dtChegada: admin.firestore.Timestamp.now(),
+        passageiros: [],
+        solicitacoes: [],
+        veiculo: { modelo: "Fiat", placa: "ABC" },
+      });
+
+      const response = await request
+        .patch(`/carona/${caronaRef.id}/solicitacao/${passageiroUid}`)
+        .set(authHeader(jwt!))
+        .send({ aceite: true });
+
+      expect(response.status).toBe(404);
+      expect(response.body.message).toContain("Solicitação deste passageiro não encontrada");
     });
   });
 });

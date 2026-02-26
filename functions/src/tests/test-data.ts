@@ -1,4 +1,3 @@
-// Dados de teste genéricos para o projeto Conecta UFOP
 import * as admin from "firebase-admin";
 
 // Dados de teste genéricos para o projeto Conecta UFOP
@@ -14,8 +13,8 @@ export const enderecoPadrao = {
 };
 
 export const createCaronaPayload = (dtPartida?: Date, dtChegada?: Date) => {
-  const partida = dtPartida  new Date(Date.now() + 24 * 60 * 60 * 1000);
-  const chegada = dtChegada  new Date(partida.getTime() + 2 * 60 * 60 * 1000);
+  const partida = dtPartida || new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const chegada = dtChegada || new Date(partida.getTime() + 2 * 60 * 60 * 1000);
   return {
     veiculo: { modelo: "Fiat Uno", placa: "ABC-1234" },
     vagas: 3,
@@ -29,7 +28,7 @@ export const createCaronaPayload = (dtPartida?: Date, dtChegada?: Date) => {
 
 export const createUsuarioDoc = (uid: string, overrides: Record<string, unknown> = {}) => ({
   nome: "Motorista Teste",
-  email: ${uid}@test.com,
+  email: `${uid}@test.com`,
   curso_ocupacao: "Engenharia",
   dtAniversario: admin.firestore.Timestamp.fromDate(new Date("2000-01-15")),
   criadoEm: admin.firestore.Timestamp.now(),
