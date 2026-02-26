@@ -1,10 +1,10 @@
 import supertest from "supertest";
-import { app } from "../index";
+import { api } from "../index";
 import test from "firebase-functions-test";
 import { clearFirestoreData } from "firebase-functions-test/lib/providers/firestore";
 import * as admin from "firebase-admin";
 
-const request = supertest(app);
+const request = supertest(api);
 const functionsTest = test({ projectId: "conecta-ufop" });
 
 describe("POST /users", () => {
@@ -186,8 +186,6 @@ afterEach(async () => {
     await clearFirestoreData({ projectId: "conecta-ufop" });
 });
 
-afterAll(async () => {
-    await clearFirestoreData({ projectId: "conecta-ufop" });
-    await admin.app().delete();
+afterAll(() => {
     functionsTest.cleanup();
 });
